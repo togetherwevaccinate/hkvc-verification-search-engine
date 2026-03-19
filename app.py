@@ -81,11 +81,11 @@ if not df.empty:
         
         if not recent_returns.empty:
             for _, row in recent_returns.iterrows():
-                # Using tight markdown (  \n) instead of padded error boxes to save space!
-                st.sidebar.markdown(
-                    f"🔴 **{row['Product Name']}** \n"
-                    f"*SKU:* `{row['SKU']}` | *Cat:* {row['Category']}  \n"
-                    f"💬 :blue[{row['Notes']}]"
+                # BROUGHT BACK THE RED BOXES! But using single line breaks to keep them compact.
+                st.sidebar.error(
+                    f"**{row['Product Name']}** \n"
+                    f"*SKU:* `{row['SKU']}` | *Category:* {row['Category']}  \n"
+                    f":blue[**💬 Comment:** {row['Notes']}]"
                 )
         else:
             st.sidebar.success("No recent returns found!")
@@ -105,13 +105,15 @@ if not df.empty:
         if not top_returns.empty:
             st.sidebar.markdown("**🔥 Top Returns**")
             for item, count in top_returns.items():
-                st.sidebar.markdown(f"🔸 **{count}x:** {item}")
+                # BROUGHT BACK THE YELLOW WARNING BOXES!
+                st.sidebar.warning(f"**{count} Returns:** {item}")
                 
         if not top_passes.empty:
-            st.sidebar.write("") # Tiny spacer
+            st.sidebar.write("") 
             st.sidebar.markdown("**✅ Top Passes**")
             for item, count in top_passes.items():
-                st.sidebar.markdown(f"🔹 **{count}x:** {item}")
+                # BROUGHT BACK THE GREEN SUCCESS BOXES!
+                st.sidebar.success(f"**{count} Passes:** {item}")
                 
         st.sidebar.markdown("---")
     
