@@ -18,8 +18,9 @@ except FileNotFoundError:
 # Display the title
 st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
 
+# --- CACHE BUSTER: Renamed the function to force Streamlit to wipe its memory ---
 @st.cache_data
-def load_data():
+def fetch_fresh_data():
     try:
         df_irr = pd.read_csv('2026 IRR_Pass rate report - IRR.csv', low_memory=False)
         df_pass = pd.read_csv('2026 IRR_Pass rate report - Pass order from IRR report.csv', low_memory=False)
@@ -32,8 +33,9 @@ def load_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU'])
 
-    # --- NEW: BULLETPROOF SAFETY NET ---
-    # This prevents crashes even if you delete or misspell column headers in your CSV!
+    # Safety Net 1
+    if 'Product Name' not in df_sop.columns:
+        df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns:
         df_sop['SOP Link'] = 'None'
     if 'Description' not in df_sop.columns:
@@ -57,7 +59,6 @@ def load_data():
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
-    # Inject reference-only items
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
@@ -71,7 +72,6 @@ def load_data():
         
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
-    # Merge SOP Links and Descriptions into the main dataframe
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
     
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None'}, inplace=True)
@@ -79,7 +79,8 @@ def load_data():
     
     return df_combined
 
-df = load_data()
+# Calls the new cache-busting function
+df = fetch_fresh_data()
 
 # --- TARGETED RESET ENGINE ---
 def reset_to_home():
@@ -181,6 +182,13 @@ if search_query:
 # 4. DISPLAY RESULTS
 # ----------------------------------------
 if not results.empty:
+    
+    # --- SAFETY NET 2: The ultimate crash prevention ---
+    if 'SOP Link' not in results.columns:
+        results['SOP Link'] = 'None'
+    if 'Description' not in results.columns:
+        results['Description'] = 'None'
+    
     st.markdown("---")
     
     tab1, tab2 = st.tabs(["📊 Analytics Dashboard", "📋 Raw Data Log"])
@@ -223,6 +231,8 @@ if not results.empty:
             if len(unique_products) > 0:
                 product_name = unique_products[0]
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
+                
+                # These variables are now 100% safe to pull
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
                 
@@ -300,7 +310,9 @@ if not results.empty:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        download_df = results.drop(columns=['SOP Link', 'Description']) if 'SOP Link' in results.columns else results
+        # Prevents crash on download by checking if columns exist before dropping them
+        cols_to_drop = [col for col in ['SOP Link', 'Description'] if col in results.columns]
+        download_df = results.drop(columns=cols_to_drop)
         csv = download_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Complete Search Results as CSV",
