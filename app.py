@@ -58,6 +58,15 @@ def load_data():
 
 df = load_data()
 
+# --- NEW: CUSTOM RESET ENGINE ---
+# This forces every widget to snap back exactly to its default state visually
+def reset_to_home():
+    st.session_state['text_search_bar'] = ""
+    st.session_state['exact_match_filter'] = "-- View All --"
+    if not df.empty:
+        st.session_state['source_filter'] = df['Record Source'].unique().tolist()
+        st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
+
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS & FILTERS)
 # ----------------------------------------
@@ -65,8 +74,6 @@ if not df.empty:
     st.sidebar.markdown("### 🚨 Recent Returns Alert")
     st.sidebar.caption("Watch out for these recent failures:")
     
-    # --- NEW: STRICT IRR-ONLY DOUBLE FILTER ---
-    # Only grabs records from the IRR source AND ensures there's an actual return reason
     strict_irr_data = df[(df['Record Source'] == 'IRR (Returned)') & (df['Return Reason'] != 'None')]
     recent_returns = strict_irr_data.tail(3)[::-1]
     
@@ -109,7 +116,8 @@ with col_submit:
 with col_reset:
     st.write("") 
     st.write("") 
-    st.button("🔄 Reset Home", on_click=lambda: st.session_state.clear(), use_container_width=True)
+    # Hooked up the new custom reset engine here!
+    st.button("🔄 Reset Home", on_click=reset_to_home, use_container_width=True)
 
 results = pd.DataFrame()
 
