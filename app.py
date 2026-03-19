@@ -39,6 +39,7 @@ def load_data():
 
     df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
+    # This explicitly tags ONLY the IRR file rows
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
     df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU']].copy()
@@ -58,14 +59,10 @@ def load_data():
 
 df = load_data()
 
-# --- NEW: CUSTOM RESET ENGINE ---
-# This forces every widget to snap back exactly to its default state visually
+# --- NEW: TARGETED RESET ENGINE ---
 def reset_to_home():
+    # Now this ONLY wipes the main search bar!
     st.session_state['text_search_bar'] = ""
-    st.session_state['exact_match_filter'] = "-- View All --"
-    if not df.empty:
-        st.session_state['source_filter'] = df['Record Source'].unique().tolist()
-        st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS & FILTERS)
@@ -74,7 +71,13 @@ if not df.empty:
     st.sidebar.markdown("### 🚨 Recent Returns Alert")
     st.sidebar.caption("Watch out for these recent failures:")
     
-    strict_irr_data = df[(df['Record Source'] == 'IRR (Returned)') & (df['Return Reason'] != 'None')]
+    # --- SUPER-STRICT ALERT FILTER ---
+    # 1. Must be from the IRR file
+    # 2. Must NOT have 'None', 'N/A', or a blank reason
+    strict_irr_data = df[
+        (df['Record Source'] == 'IRR (Returned)') & 
+        (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
+    ]
     recent_returns = strict_irr_data.tail(3)[::-1]
     
     if not recent_returns.empty:
@@ -89,14 +92,10 @@ if not df.empty:
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("**Exact Item Match**")
-    all_products = ["-- View All --"] + sorted(df['Product Name'].unique().tolist())
-    selected_exact_product = st.sidebar.selectbox("Find item from list:", all_products, key="exact_match_filter")
+    # Exact Match Dropdown REMOVED from here
 
+    # Apply sidebar filters
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
-    if selected_exact_product != "-- View All --":
-        df = df[df['Product Name'] == selected_exact_product]
 
 # ----------------------------------------
 # 3. MAIN SEARCH INTERFACE
@@ -116,18 +115,13 @@ with col_submit:
 with col_reset:
     st.write("") 
     st.write("") 
-    # Hooked up the new custom reset engine here!
     st.button("🔄 Reset Home", on_click=reset_to_home, use_container_width=True)
 
 results = pd.DataFrame()
 
-if selected_exact_product != "-- View All --":
-    if search_query:
-        query_spaced = search_query.lower()
-        results = df[df['Order Number'].str.lower().str.contains(query_spaced, na=False) | df['SKU'].str.lower().str.contains(query_spaced, na=False)]
-    else:
-        results = df
-elif search_query:
+# Exact Match Logic REMOVED from here
+
+if search_query:
     if len(search_query) < 3:
         st.warning("⚠️ Please type at least 3 characters to start searching.")
     elif not df.empty:
@@ -252,5 +246,5 @@ if not results.empty:
             file_name='search_results_anonymous.csv',
             mime='text/csv',
         )
-elif search_query or selected_exact_product != "-- View All --":
+elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
