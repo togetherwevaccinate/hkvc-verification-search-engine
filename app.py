@@ -30,7 +30,13 @@ def load_data():
     try:
         df_sop = pd.read_csv('SOP_mapping.csv')
     except FileNotFoundError:
-        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link'])
+        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU'])
+
+    # Ensure Description and SKU columns exist even if missing from CSV
+    if 'Description' not in df_sop.columns:
+        df_sop['Description'] = 'None'
+    if 'SKU' not in df_sop.columns:
+        df_sop['SKU'] = 'Unknown'
 
     if 'SKU' not in df_irr.columns:
         df_irr['SKU'] = 'Unknown'
@@ -48,10 +54,26 @@ def load_data():
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
-    # Merge SOP Links into the main dataframe
-    df_combined = pd.merge(df_combined, df_sop, on='Product Name', how='left')
+    # --- NEW: INJECT REFERENCE-ONLY ITEMS (NOW WITH SKUS) ---
+    existing_products = df_combined['Product Name'].unique()
+    ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
-    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None'}, inplace=True)
+    if not ref_only_items.empty:
+        ref_only_items['Order Number'] = 'N/A'
+        ref_only_items['Return Reason'] = 'None'
+        ref_only_items['Category'] = 'Reference'
+        ref_only_items['Vertical'] = 'N/A'
+        ref_only_items['Notes'] = 'No historical orders. Reference only.'
+        # The SKU is no longer hardcoded! It will pull directly from your SOP_mapping.csv
+        ref_only_items['Record Source'] = 'Reference Only'
+        
+        # Add them to the main database so they are searchable
+        df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
+
+    # Merge SOP Links and Descriptions into the main dataframe
+    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
+    
+    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str)
     
     return df_combined
@@ -68,7 +90,6 @@ def reset_to_home():
 current_search = st.session_state.get('text_search_bar', '')
 
 if not df.empty:
-    # --- HOMEPAGE ONLY: ALERTS & LEADERBOARD ---
     if current_search == "":
         st.sidebar.markdown("### 🚨 Recent Returns")
         
@@ -94,11 +115,9 @@ if not df.empty:
 
         st.sidebar.markdown("### 🏆 Frequent Items")
         
-        # Calculate Top Returns
         irr_counts = df[df['Record Source'] == 'IRR (Returned)']['Product Name'].value_counts()
         top_returns = irr_counts[irr_counts > 1].head(3)
         
-        # Calculate Top Passes
         pass_counts = df[df['Record Source'] == 'Pass Order']['Product Name'].value_counts()
         top_passes = pass_counts[pass_counts > 1].head(3)
         
@@ -115,12 +134,10 @@ if not df.empty:
                 
         st.sidebar.markdown("---")
     
-    # Existing Filters (Always visible)
     st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
     
-    # Apply sidebar filters
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
 # ----------------------------------------
@@ -174,14 +191,16 @@ if not results.empty:
             total_records = len(results)
             irr_count = len(results[results['Record Source'] == 'IRR (Returned)'])
             pass_count = len(results[results['Record Source'] == 'Pass Order'])
+            ref_count = len(results[results['Record Source'] == 'Reference Only'])
             
-            pass_rate = (pass_count / total_records) * 100 if total_records > 0 else 0
+            calc_records = total_records - ref_count
+            pass_rate = (pass_count / calc_records) * 100 if calc_records > 0 else 0
             
             m_col1, m_col2, m_col3, m_col4 = st.columns(4)
             m_col1.metric("Total Records", total_records)
             m_col2.metric("IRR (Returned)", irr_count)
             m_col3.metric("Pass Orders", pass_count)
-            m_col4.metric("Pass Rate %", f"{pass_rate:.1f}%")
+            m_col4.metric("Pass Rate %", f"{pass_rate:.1f}%" if calc_records > 0 else "N/A")
             
             st.write("") 
             
@@ -193,6 +212,8 @@ if not results.empty:
                 fig = px.pie(defect_counts, values='Count', names='Defect', hole=0.4)
                 fig.update_layout(margin=dict(t=10, b=10, l=10, r=10))
                 st.plotly_chart(fig, use_container_width=True)
+            elif ref_count == total_records:
+                st.info("ℹ️ This is a Reference-Only item. No defect history exists.")
             else:
                 st.success("✨ No defect history found for this search! Everything passed.")
 
@@ -202,6 +223,7 @@ if not results.empty:
                 product_name = unique_products[0]
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
+                product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
                 
                 img_path_png = os.path.join("images", f"{product_name}.png")
                 img_path_jpg = os.path.join("images", f"{product_name}.jpg")
@@ -223,6 +245,11 @@ if not results.empty:
                 if product_sku != 'Unknown':
                     st.markdown(f"**SKU:** `{product_sku}`")
                 
+                if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
+                    st.markdown("---")
+                    st.markdown("### 📖 Product Notes")
+                    st.info(product_desc)
+                
                 st.write("")
                 st.markdown("**🔗 Quick Links:**")
                 
@@ -238,7 +265,6 @@ if not results.empty:
                             st.link_button(btn_name, link, use_container_width=True)
     
     with tab2:
-        # --- NEW: RAW DATA DISCLAIMER ---
         st.warning("⚠️ **Disclaimer:** Do not solely rely on this historical data for trouble routing. These records are case studies and should be referenced on a case-by-case basis. Please continue to leverage your own personal expertise to make the final judgment.")
         st.write("")
         
@@ -247,6 +273,8 @@ if not results.empty:
                 return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
             elif row['Record Source'] == 'IRR (Returned)':
                 return ['background-color: rgba(248, 81, 73, 0.15)'] * len(row)
+            elif row['Record Source'] == 'Reference Only':
+                return ['background-color: rgba(128, 128, 128, 0.15)'] * len(row)
             return [''] * len(row)
 
         display_columns = ['Order Number', 'Product Name', 'SKU', 'Return Reason', 'Category', 'Vertical', 'Record Source']
@@ -260,13 +288,18 @@ if not results.empty:
             notes_data = results[(results['Notes'] != 'None') & (results['Notes'].notna())]
             if not notes_data.empty:
                 for index, row in notes_data.iterrows():
-                    status_icon = "❌" if row['Record Source'] == 'IRR (Returned)' else "✅"
+                    if row['Record Source'] == 'IRR (Returned)':
+                        status_icon = "❌"
+                    elif row['Record Source'] == 'Pass Order':
+                        status_icon = "✅"
+                    else:
+                        status_icon = "ℹ️"
                     st.markdown(f"**{status_icon} Order {row['Order Number']} ({row['Return Reason']}):** {row['Notes']}")
             else:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        download_df = results.drop(columns=['SOP Link']) if 'SOP Link' in results.columns else results
+        download_df = results.drop(columns=['SOP Link', 'Description']) if 'SOP Link' in results.columns else results
         csv = download_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Complete Search Results as CSV",
