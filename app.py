@@ -123,12 +123,6 @@ if not df.empty:
     # Apply sidebar filters
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
-    # --- NEW: SUPPORT BUTTON ---
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🛠️ Need Help?")
-    st.sidebar.caption("Encountered a technical issue or have feedback?")
-    st.sidebar.link_button("💬 Contact Host on Slack", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H", use_container_width=True)
-
 # ----------------------------------------
 # 3. MAIN SEARCH INTERFACE
 # ----------------------------------------
@@ -278,3 +272,11 @@ if not results.empty:
         )
 elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
+
+# ----------------------------------------
+# 5. FOOTER / SUPPORT (Moved to Main Page)
+# ----------------------------------------
+st.markdown("---")
+st.markdown("#### 🛠️ Need Help?")
+st.caption("Encountered a technical issue or have feedback?")
+st.link_button("💬 Contact Host on Slack", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
