@@ -63,7 +63,7 @@ def reset_to_home():
     st.session_state['text_search_bar'] = ""
 
 # ----------------------------------------
-# 2. SIDEBAR (ALERTS & FILTERS)
+# 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
 # ----------------------------------------
 if not df.empty:
     st.sidebar.markdown("### 🚨 Recent Returns Alert")
@@ -74,12 +74,10 @@ if not df.empty:
         (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
     ]
     
-    # --- CHANGED BACK TO 3 CASES ---
     recent_returns = strict_irr_data.tail(3)[::-1]
     
     if not recent_returns.empty:
         for _, row in recent_returns.iterrows():
-            # --- SHOWING CATEGORY AND HIGHLIGHTED COMMENT ---
             st.sidebar.error(
                 f"**{row['Product Name']}**\n\n"
                 f"*SKU: {row['SKU']}*\n\n"
@@ -90,7 +88,37 @@ if not df.empty:
         st.sidebar.success("No recent returns found!")
 
     st.sidebar.markdown("---")
+
+    # --- NEW: HOMEPAGE FREQUENT ITEMS LEADERBOARD ---
+    # This checks if the search bar is currently empty (meaning they are on the "homepage")
+    current_search = st.session_state.get('text_search_bar', '')
     
+    if current_search == "":
+        st.sidebar.markdown("### 🏆 Frequent Items Leaderboard")
+        st.sidebar.caption("Items appearing repeatedly. Double-check these!")
+        
+        # Calculate Top Returns (must appear more than once)
+        irr_counts = df[df['Record Source'] == 'IRR (Returned)']['Product Name'].value_counts()
+        top_returns = irr_counts[irr_counts > 1].head(3)
+        
+        # Calculate Top Passes (must appear more than once)
+        pass_counts = df[df['Record Source'] == 'Pass Order']['Product Name'].value_counts()
+        top_passes = pass_counts[pass_counts > 1].head(3)
+        
+        if not top_returns.empty:
+            st.sidebar.markdown("**🔥 Top Repeated Returns**")
+            for item, count in top_returns.items():
+                st.sidebar.warning(f"**{count} Returns:** {item}")
+                
+        if not top_passes.empty:
+            st.sidebar.write("") # Tiny spacer
+            st.sidebar.markdown("**✅ Top Repeated Passes**")
+            for item, count in top_passes.items():
+                st.sidebar.success(f"**{count} Passes:** {item}")
+                
+        st.sidebar.markdown("---")
+    
+    # Existing Filters
     st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
