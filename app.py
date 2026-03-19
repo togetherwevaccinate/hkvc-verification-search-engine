@@ -156,12 +156,10 @@ if not results.empty:
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 
-                # --- NEW LOWERCASE FIX FOR IMAGES ---
-                image_file_name = product_name.lower()
-                
-                img_path_png = os.path.join("images", f"{image_file_name}.png")
-                img_path_jpg = os.path.join("images", f"{image_file_name}.jpg")
-                img_path_jpeg = os.path.join("images", f"{image_file_name}.jpeg")
+                # --- REVERTED BACK TO EXACT MATCH ---
+                img_path_png = os.path.join("images", f"{product_name}.png")
+                img_path_jpg = os.path.join("images", f"{product_name}.jpg")
+                img_path_jpeg = os.path.join("images", f"{product_name}.jpeg")
                 default_img_path = os.path.join("images", "default.png")
                 
                 if os.path.exists(img_path_png):
@@ -182,11 +180,11 @@ if not results.empty:
                 st.write("")
                 st.markdown("**🔗 Quick Links:**")
                 
-                # 1. StockX Button (Always Shows)
+                # 1. StockX Button
                 stockx_url = f"https://stockx.com/{product_name.lower()}"
                 st.link_button("🌐 StockX Live", stockx_url, use_container_width=True)
                 
-                # 2. SOP Buttons (Handles single or comma-separated multiple links)
+                # 2. SOP Buttons 
                 if product_sop != 'None' and pd.notna(product_sop):
                     sop_links = [link.strip() for link in str(product_sop).split(',')]
                     
