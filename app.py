@@ -81,10 +81,11 @@ if not df.empty:
         
         if not recent_returns.empty:
             for _, row in recent_returns.iterrows():
-                # BROUGHT BACK THE RED BOXES! But using single line breaks to keep them compact.
+                # --- NEW STACKED FORMAT WITH BORDERS/FONTS ---
                 st.sidebar.error(
                     f"**{row['Product Name']}** \n"
-                    f"*SKU:* `{row['SKU']}` | *Category:* {row['Category']}  \n"
+                    f"**SKU:** `{row['SKU']}`  \n"
+                    f"**Category:** `{row['Category']}`  \n"
                     f":blue[**💬 Comment:** {row['Notes']}]"
                 )
         else:
@@ -105,14 +106,12 @@ if not df.empty:
         if not top_returns.empty:
             st.sidebar.markdown("**🔥 Top Returns**")
             for item, count in top_returns.items():
-                # BROUGHT BACK THE YELLOW WARNING BOXES!
                 st.sidebar.warning(f"**{count} Returns:** {item}")
                 
         if not top_passes.empty:
             st.sidebar.write("") 
             st.sidebar.markdown("**✅ Top Passes**")
             for item, count in top_passes.items():
-                # BROUGHT BACK THE GREEN SUCCESS BOXES!
                 st.sidebar.success(f"**{count} Passes:** {item}")
                 
         st.sidebar.markdown("---")
