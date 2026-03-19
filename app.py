@@ -238,6 +238,10 @@ if not results.empty:
                             st.link_button(btn_name, link, use_container_width=True)
     
     with tab2:
+        # --- NEW: RAW DATA DISCLAIMER ---
+        st.warning("⚠️ **Disclaimer:** Do not solely rely on this historical data for trouble routing. These records are case studies and should be referenced on a case-by-case basis. Please continue to leverage your own personal expertise to make the final judgment.")
+        st.write("")
+        
         def traffic_light_colors(row):
             if row['Record Source'] == 'Pass Order':
                 return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
@@ -274,7 +278,7 @@ elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
 
 # ----------------------------------------
-# 5. FOOTER / SUPPORT (Moved to Main Page)
+# 5. FOOTER / SUPPORT (Main Page)
 # ----------------------------------------
 st.markdown("---")
 st.markdown("#### 🛠️ Need Help?")
