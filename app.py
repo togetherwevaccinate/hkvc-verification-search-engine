@@ -18,7 +18,6 @@ except FileNotFoundError:
 # Display the title
 st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
 
-# --- NEW CACHE BUSTER ---
 @st.cache_data
 def fetch_latest_data():
     try:
@@ -48,8 +47,6 @@ def fetch_latest_data():
     if 'SKU' not in df_pass.columns:
         df_pass['SKU'] = 'Unknown'
 
-    # --- THE INVISIBLE SPACE STRIPPER ---
-    # Automatically deletes accidental spaces at the beginning or end of product names!
     df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
     
     df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU']].copy()
@@ -62,19 +59,14 @@ def fetch_latest_data():
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
-    # Combine historical files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
-    # --- REPAIRED MERGE ORDER ---
-    # Step 1: Merge SOP data into the main database first
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
     
-    # Step 2: Find brand new items that were NOT in the historical files
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
-    # Step 3: Inject the brand new items cleanly at the bottom
     if not ref_only_items.empty:
         ref_only_items['Order Number'] = 'N/A'
         ref_only_items['Return Reason'] = 'None'
@@ -92,9 +84,13 @@ def fetch_latest_data():
 
 df = fetch_latest_data()
 
-# --- TARGETED RESET ENGINE ---
+# --- NEW: SUPERCHARGED RESET ENGINE ---
+# This forces the app to re-check all 3 filter boxes so Reference items aren't hidden
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
+    if not df.empty:
+        st.session_state['source_filter'] = df['Record Source'].unique().tolist()
+        st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
@@ -193,7 +189,6 @@ if search_query:
 # ----------------------------------------
 if not results.empty:
     
-    # Safety Net for Display
     if 'SOP Link' not in results.columns:
         results['SOP Link'] = 'None'
     if 'Description' not in results.columns:
@@ -244,6 +239,23 @@ if not results.empty:
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
                 
+                # --- NEW: ENHANCED & RELOCATED PRODUCT NOTES ---
+                if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
+                    st.markdown("### 📢 Important Notes")
+                    desc_text = str(product_desc).replace("\\n", "\n")
+                    
+                    # Smart formatting: breaks paragraphs into a bolded bullet list
+                    if "\n" in desc_text:
+                        lines = [line.strip() for line in desc_text.split("\n") if line.strip()]
+                    else:
+                        # Splits by period and space to avoid splitting decimals like 23.5cm
+                        lines = [line.strip() + "." for line in desc_text.split(". ") if line.strip()]
+                        lines = [line.replace("..", ".") for line in lines]
+                        
+                    formatted_desc = "\n\n".join([f"👉 **{line}**" for line in lines])
+                    st.warning(formatted_desc)
+                    st.write("") # Small spacer
+                
                 img_path_png = os.path.join("images", f"{product_name}.png")
                 img_path_jpg = os.path.join("images", f"{product_name}.jpg")
                 img_path_jpeg = os.path.join("images", f"{product_name}.jpeg")
@@ -263,11 +275,6 @@ if not results.empty:
                 st.markdown(f"**Item:** {product_name}")
                 if product_sku != 'Unknown':
                     st.markdown(f"**SKU:** `{product_sku}`")
-                
-                if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
-                    st.markdown("---")
-                    st.markdown("### 📖 Product Notes")
-                    st.info(product_desc)
                 
                 st.write("")
                 st.markdown("**🔗 Quick Links:**")
