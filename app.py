@@ -32,7 +32,10 @@ def load_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU'])
 
-    # Ensure Description and SKU columns exist even if missing from CSV
+    # --- NEW: BULLETPROOF SAFETY NET ---
+    # This prevents crashes even if you delete or misspell column headers in your CSV!
+    if 'SOP Link' not in df_sop.columns:
+        df_sop['SOP Link'] = 'None'
     if 'Description' not in df_sop.columns:
         df_sop['Description'] = 'None'
     if 'SKU' not in df_sop.columns:
@@ -54,7 +57,7 @@ def load_data():
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
-    # --- NEW: INJECT REFERENCE-ONLY ITEMS (NOW WITH SKUS) ---
+    # Inject reference-only items
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
@@ -64,10 +67,8 @@ def load_data():
         ref_only_items['Category'] = 'Reference'
         ref_only_items['Vertical'] = 'N/A'
         ref_only_items['Notes'] = 'No historical orders. Reference only.'
-        # The SKU is no longer hardcoded! It will pull directly from your SOP_mapping.csv
         ref_only_items['Record Source'] = 'Reference Only'
         
-        # Add them to the main database so they are searchable
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
     # Merge SOP Links and Descriptions into the main dataframe
