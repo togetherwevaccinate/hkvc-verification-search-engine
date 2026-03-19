@@ -79,10 +79,18 @@ if not df.empty:
 # 3. MAIN SEARCH INTERFACE
 # ----------------------------------------
 st.markdown("### Search Database")
-col_search, col_reset = st.columns([5, 1])
+
+# --- NEW: THREE-COLUMN LAYOUT FOR SEPARATE BUTTONS ---
+col_search, col_submit, col_reset = st.columns([6, 1, 1])
 
 with col_search:
     search_query = st.text_input("🔍 Type Name, Order #, or SKU (e.g., 'DH2920' or 'joker'):", key="text_search_bar")
+
+with col_submit:
+    st.write("") 
+    st.write("") 
+    # This button acts as a visual "Enter" button to trigger the search naturally
+    st.button("🔍 Search", use_container_width=True)
 
 with col_reset:
     st.write("") 
@@ -156,7 +164,6 @@ if not results.empty:
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 
-                # --- REVERTED BACK TO EXACT MATCH ---
                 img_path_png = os.path.join("images", f"{product_name}.png")
                 img_path_jpg = os.path.join("images", f"{product_name}.jpg")
                 img_path_jpeg = os.path.join("images", f"{product_name}.jpeg")
