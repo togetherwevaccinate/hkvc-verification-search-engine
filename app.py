@@ -59,13 +59,22 @@ def fetch_latest_data():
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
+    # Combine historical files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
+    # --- NEW: PURGE "nan" GHOST ROWS ---
+    # This specifically kills any blank rows that accidentally got converted to the word "nan"
+    df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
+
+    # Merge SOP Links and Descriptions
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
+    
+    # Also clean reference items just in case there's an empty row in SOP mapping!
+    ref_only_items = ref_only_items[~ref_only_items['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
     
     if not ref_only_items.empty:
         ref_only_items['Order Number'] = 'N/A'
@@ -84,8 +93,7 @@ def fetch_latest_data():
 
 df = fetch_latest_data()
 
-# --- NEW: SUPERCHARGED RESET ENGINE ---
-# This forces the app to re-check all 3 filter boxes so Reference items aren't hidden
+# --- SUPERCHARGED RESET ENGINE ---
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     if not df.empty:
@@ -239,22 +247,19 @@ if not results.empty:
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
                 
-                # --- NEW: ENHANCED & RELOCATED PRODUCT NOTES ---
                 if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
                     st.markdown("### 📢 Important Notes")
                     desc_text = str(product_desc).replace("\\n", "\n")
                     
-                    # Smart formatting: breaks paragraphs into a bolded bullet list
                     if "\n" in desc_text:
                         lines = [line.strip() for line in desc_text.split("\n") if line.strip()]
                     else:
-                        # Splits by period and space to avoid splitting decimals like 23.5cm
                         lines = [line.strip() + "." for line in desc_text.split(". ") if line.strip()]
                         lines = [line.replace("..", ".") for line in lines]
                         
                     formatted_desc = "\n\n".join([f"👉 **{line}**" for line in lines])
                     st.warning(formatted_desc)
-                    st.write("") # Small spacer
+                    st.write("") 
                 
                 img_path_png = os.path.join("images", f"{product_name}.png")
                 img_path_jpg = os.path.join("images", f"{product_name}.jpg")
