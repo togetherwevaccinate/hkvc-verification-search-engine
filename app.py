@@ -39,7 +39,6 @@ def load_data():
 
     df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
-    # This explicitly tags ONLY the IRR file rows
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
     df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU']].copy()
@@ -59,9 +58,8 @@ def load_data():
 
 df = load_data()
 
-# --- NEW: TARGETED RESET ENGINE ---
+# --- TARGETED RESET ENGINE ---
 def reset_to_home():
-    # Now this ONLY wipes the main search bar!
     st.session_state['text_search_bar'] = ""
 
 # ----------------------------------------
@@ -71,18 +69,23 @@ if not df.empty:
     st.sidebar.markdown("### 🚨 Recent Returns Alert")
     st.sidebar.caption("Watch out for these recent failures:")
     
-    # --- SUPER-STRICT ALERT FILTER ---
-    # 1. Must be from the IRR file
-    # 2. Must NOT have 'None', 'N/A', or a blank reason
     strict_irr_data = df[
         (df['Record Source'] == 'IRR (Returned)') & 
         (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
     ]
+    
+    # --- CHANGED BACK TO 3 CASES ---
     recent_returns = strict_irr_data.tail(3)[::-1]
     
     if not recent_returns.empty:
         for _, row in recent_returns.iterrows():
-            st.sidebar.error(f"**{row['Product Name']}**\n\n*SKU: {row['SKU']}*\n\n**Reason:** {row['Return Reason']}")
+            # --- SHOWING CATEGORY AND HIGHLIGHTED COMMENT ---
+            st.sidebar.error(
+                f"**{row['Product Name']}**\n\n"
+                f"*SKU: {row['SKU']}*\n\n"
+                f"**Category:** {row['Category']}\n\n"
+                f":blue[**💬 Comment:** {row['Notes']}]"
+            )
     else:
         st.sidebar.success("No recent returns found!")
 
@@ -92,8 +95,6 @@ if not df.empty:
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
     
-    # Exact Match Dropdown REMOVED from here
-
     # Apply sidebar filters
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
@@ -118,8 +119,6 @@ with col_reset:
     st.button("🔄 Reset Home", on_click=reset_to_home, use_container_width=True)
 
 results = pd.DataFrame()
-
-# Exact Match Logic REMOVED from here
 
 if search_query:
     if len(search_query) < 3:
