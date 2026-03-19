@@ -62,12 +62,13 @@ df = load_data()
 # 2. SIDEBAR (ALERTS & FILTERS)
 # ----------------------------------------
 if not df.empty:
-    # --- NEW: RECENT RETURNS NOTIFICATION ---
     st.sidebar.markdown("### 🚨 Recent Returns Alert")
     st.sidebar.caption("Watch out for these recent failures:")
     
-    # Automatically grab the 3 most recent IRR records (assumes newest are at the bottom of the CSV)
-    recent_returns = df[df['Record Source'] == 'IRR (Returned)'].tail(3)[::-1]
+    # --- NEW: STRICT IRR-ONLY DOUBLE FILTER ---
+    # Only grabs records from the IRR source AND ensures there's an actual return reason
+    strict_irr_data = df[(df['Record Source'] == 'IRR (Returned)') & (df['Return Reason'] != 'None')]
+    recent_returns = strict_irr_data.tail(3)[::-1]
     
     if not recent_returns.empty:
         for _, row in recent_returns.iterrows():
@@ -77,7 +78,6 @@ if not df.empty:
 
     st.sidebar.markdown("---")
     
-    # Existing Filters
     st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
@@ -141,7 +141,6 @@ if not results.empty:
     
     tab1, tab2 = st.tabs(["📊 Analytics Dashboard", "📋 Raw Data Log"])
     
-    # TAB 1: VISUALS AND METRICS
     with tab1:
         left_col, right_col = st.columns([3, 1])
         
@@ -212,7 +211,6 @@ if not results.empty:
                             btn_name = "📘 Internal SOP" if len(sop_links) == 1 else f"📘 Internal SOP (Part {i+1})"
                             st.link_button(btn_name, link, use_container_width=True)
     
-    # TAB 2: RAW DATA TABLE
     with tab2:
         def traffic_light_colors(row):
             if row['Record Source'] == 'Pass Order':
