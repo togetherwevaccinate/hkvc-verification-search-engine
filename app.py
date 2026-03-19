@@ -156,9 +156,12 @@ if not results.empty:
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 
-                img_path_png = os.path.join("images", f"{product_name}.png")
-                img_path_jpg = os.path.join("images", f"{product_name}.jpg")
-                img_path_jpeg = os.path.join("images", f"{product_name}.jpeg")
+                # --- NEW LOWERCASE FIX FOR IMAGES ---
+                image_file_name = product_name.lower()
+                
+                img_path_png = os.path.join("images", f"{image_file_name}.png")
+                img_path_jpg = os.path.join("images", f"{image_file_name}.jpg")
+                img_path_jpeg = os.path.join("images", f"{image_file_name}.jpeg")
                 default_img_path = os.path.join("images", "default.png")
                 
                 if os.path.exists(img_path_png):
@@ -176,7 +179,6 @@ if not results.empty:
                 if product_sku != 'Unknown':
                     st.markdown(f"**SKU:** `{product_sku}`")
                 
-                # --- NEW: MULTIPLE LINK HANDLING ---
                 st.write("")
                 st.markdown("**🔗 Quick Links:**")
                 
@@ -186,12 +188,10 @@ if not results.empty:
                 
                 # 2. SOP Buttons (Handles single or comma-separated multiple links)
                 if product_sop != 'None' and pd.notna(product_sop):
-                    # This splits the links by comma and removes any accidental blank spaces!
                     sop_links = [link.strip() for link in str(product_sop).split(',')]
                     
                     for i, link in enumerate(sop_links):
-                        if link: # Safety check to make sure it isn't an empty string
-                            # If there's only 1 link, just say "Internal SOP". If more, label them Part 1, Part 2, etc.
+                        if link: 
                             btn_name = "📘 Internal SOP" if len(sop_links) == 1 else f"📘 Internal SOP (Part {i+1})"
                             st.link_button(btn_name, link, use_container_width=True)
     
