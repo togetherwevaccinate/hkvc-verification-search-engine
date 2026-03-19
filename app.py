@@ -18,9 +18,9 @@ except FileNotFoundError:
 # Display the title
 st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
 
-# --- CACHE BUSTER: Renamed the function to force Streamlit to wipe its memory ---
+# --- NEW CACHE BUSTER ---
 @st.cache_data
-def fetch_fresh_data():
+def fetch_latest_data():
     try:
         df_irr = pd.read_csv('2026 IRR_Pass rate report - IRR.csv', low_memory=False)
         df_pass = pd.read_csv('2026 IRR_Pass rate report - Pass order from IRR report.csv', low_memory=False)
@@ -33,7 +33,7 @@ def fetch_fresh_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU'])
 
-    # Safety Net 1
+    # Safety Nets
     if 'Product Name' not in df_sop.columns:
         df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns:
@@ -48,20 +48,33 @@ def fetch_fresh_data():
     if 'SKU' not in df_pass.columns:
         df_pass['SKU'] = 'Unknown'
 
+    # --- THE INVISIBLE SPACE STRIPPER ---
+    # Automatically deletes accidental spaces at the beginning or end of product names!
+    df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
+    
     df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
+    df_irr_clean['Product Name'] = df_irr_clean['Product Name'].astype(str).str.strip()
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
     df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU']].copy()
     df_pass_clean.rename(columns={'order_id': 'Order Number', 'trouble_reason': 'Return Reason', 'vertical': 'Vertical', 'name': 'Product Name', 'trouble_notes': 'Notes'}, inplace=True)
+    df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
+    # Combine historical files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
+    # --- REPAIRED MERGE ORDER ---
+    # Step 1: Merge SOP data into the main database first
+    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
+    
+    # Step 2: Find brand new items that were NOT in the historical files
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
+    # Step 3: Inject the brand new items cleanly at the bottom
     if not ref_only_items.empty:
         ref_only_items['Order Number'] = 'N/A'
         ref_only_items['Return Reason'] = 'None'
@@ -72,15 +85,12 @@ def fetch_fresh_data():
         
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
-    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
-    
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None'}, inplace=True)
-    df_combined['SKU'] = df_combined['SKU'].astype(str)
+    df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     
     return df_combined
 
-# Calls the new cache-busting function
-df = fetch_fresh_data()
+df = fetch_latest_data()
 
 # --- TARGETED RESET ENGINE ---
 def reset_to_home():
@@ -183,7 +193,7 @@ if search_query:
 # ----------------------------------------
 if not results.empty:
     
-    # --- SAFETY NET 2: The ultimate crash prevention ---
+    # Safety Net for Display
     if 'SOP Link' not in results.columns:
         results['SOP Link'] = 'None'
     if 'Description' not in results.columns:
@@ -231,8 +241,6 @@ if not results.empty:
             if len(unique_products) > 0:
                 product_name = unique_products[0]
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
-                
-                # These variables are now 100% safe to pull
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
                 
@@ -310,7 +318,6 @@ if not results.empty:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        # Prevents crash on download by checking if columns exist before dropping them
         cols_to_drop = [col for col in ['SOP Link', 'Description'] if col in results.columns]
         download_df = results.drop(columns=cols_to_drop)
         csv = download_df.to_csv(index=False).encode('utf-8')
