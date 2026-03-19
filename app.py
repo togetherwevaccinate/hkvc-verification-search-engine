@@ -59,10 +59,26 @@ def load_data():
 df = load_data()
 
 # ----------------------------------------
-# 2. SIDEBAR FILTERS
+# 2. SIDEBAR (ALERTS & FILTERS)
 # ----------------------------------------
-st.sidebar.header("Filter Results")
 if not df.empty:
+    # --- NEW: RECENT RETURNS NOTIFICATION ---
+    st.sidebar.markdown("### 🚨 Recent Returns Alert")
+    st.sidebar.caption("Watch out for these recent failures:")
+    
+    # Automatically grab the 3 most recent IRR records (assumes newest are at the bottom of the CSV)
+    recent_returns = df[df['Record Source'] == 'IRR (Returned)'].tail(3)[::-1]
+    
+    if not recent_returns.empty:
+        for _, row in recent_returns.iterrows():
+            st.sidebar.error(f"**{row['Product Name']}**\n\n*SKU: {row['SKU']}*\n\n**Reason:** {row['Return Reason']}")
+    else:
+        st.sidebar.success("No recent returns found!")
+
+    st.sidebar.markdown("---")
+    
+    # Existing Filters
+    st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
     
@@ -80,7 +96,6 @@ if not df.empty:
 # ----------------------------------------
 st.markdown("### Search Database")
 
-# --- NEW: THREE-COLUMN LAYOUT FOR SEPARATE BUTTONS ---
 col_search, col_submit, col_reset = st.columns([6, 1, 1])
 
 with col_search:
@@ -89,7 +104,6 @@ with col_search:
 with col_submit:
     st.write("") 
     st.write("") 
-    # This button acts as a visual "Enter" button to trigger the search naturally
     st.button("🔍 Search", use_container_width=True)
 
 with col_reset:
@@ -187,11 +201,9 @@ if not results.empty:
                 st.write("")
                 st.markdown("**🔗 Quick Links:**")
                 
-                # 1. StockX Button
                 stockx_url = f"https://stockx.com/{product_name.lower()}"
                 st.link_button("🌐 StockX Live", stockx_url, use_container_width=True)
                 
-                # 2. SOP Buttons 
                 if product_sop != 'None' and pd.notna(product_sop):
                     sop_links = [link.strip() for link in str(product_sop).split(',')]
                     
