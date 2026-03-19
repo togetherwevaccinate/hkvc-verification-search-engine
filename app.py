@@ -65,60 +65,57 @@ def reset_to_home():
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
 # ----------------------------------------
+current_search = st.session_state.get('text_search_bar', '')
+
 if not df.empty:
-    st.sidebar.markdown("### 🚨 Recent Returns Alert")
-    st.sidebar.caption("Watch out for these recent failures:")
-    
-    strict_irr_data = df[
-        (df['Record Source'] == 'IRR (Returned)') & 
-        (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
-    ]
-    
-    recent_returns = strict_irr_data.tail(3)[::-1]
-    
-    if not recent_returns.empty:
-        for _, row in recent_returns.iterrows():
-            st.sidebar.error(
-                f"**{row['Product Name']}**\n\n"
-                f"*SKU: {row['SKU']}*\n\n"
-                f"**Category:** {row['Category']}\n\n"
-                f":blue[**💬 Comment:** {row['Notes']}]"
-            )
-    else:
-        st.sidebar.success("No recent returns found!")
-
-    st.sidebar.markdown("---")
-
-    # --- NEW: HOMEPAGE FREQUENT ITEMS LEADERBOARD ---
-    # This checks if the search bar is currently empty (meaning they are on the "homepage")
-    current_search = st.session_state.get('text_search_bar', '')
-    
+    # --- HOMEPAGE ONLY: ALERTS & LEADERBOARD ---
     if current_search == "":
-        st.sidebar.markdown("### 🏆 Frequent Items Leaderboard")
-        st.sidebar.caption("Items appearing repeatedly. Double-check these!")
+        st.sidebar.markdown("### 🚨 Recent Returns")
         
-        # Calculate Top Returns (must appear more than once)
+        strict_irr_data = df[
+            (df['Record Source'] == 'IRR (Returned)') & 
+            (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
+        ]
+        
+        recent_returns = strict_irr_data.tail(3)[::-1]
+        
+        if not recent_returns.empty:
+            for _, row in recent_returns.iterrows():
+                # Using tight markdown (  \n) instead of padded error boxes to save space!
+                st.sidebar.markdown(
+                    f"🔴 **{row['Product Name']}** \n"
+                    f"*SKU:* `{row['SKU']}` | *Cat:* {row['Category']}  \n"
+                    f"💬 :blue[{row['Notes']}]"
+                )
+        else:
+            st.sidebar.success("No recent returns found!")
+
+        st.sidebar.markdown("---")
+
+        st.sidebar.markdown("### 🏆 Frequent Items")
+        
+        # Calculate Top Returns
         irr_counts = df[df['Record Source'] == 'IRR (Returned)']['Product Name'].value_counts()
         top_returns = irr_counts[irr_counts > 1].head(3)
         
-        # Calculate Top Passes (must appear more than once)
+        # Calculate Top Passes
         pass_counts = df[df['Record Source'] == 'Pass Order']['Product Name'].value_counts()
         top_passes = pass_counts[pass_counts > 1].head(3)
         
         if not top_returns.empty:
-            st.sidebar.markdown("**🔥 Top Repeated Returns**")
+            st.sidebar.markdown("**🔥 Top Returns**")
             for item, count in top_returns.items():
-                st.sidebar.warning(f"**{count} Returns:** {item}")
+                st.sidebar.markdown(f"🔸 **{count}x:** {item}")
                 
         if not top_passes.empty:
             st.sidebar.write("") # Tiny spacer
-            st.sidebar.markdown("**✅ Top Repeated Passes**")
+            st.sidebar.markdown("**✅ Top Passes**")
             for item, count in top_passes.items():
-                st.sidebar.success(f"**{count} Passes:** {item}")
+                st.sidebar.markdown(f"🔹 **{count}x:** {item}")
                 
         st.sidebar.markdown("---")
     
-    # Existing Filters
+    # Existing Filters (Always visible)
     st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
