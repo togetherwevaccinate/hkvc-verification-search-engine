@@ -3,28 +3,27 @@ import streamlit as st
 import os
 import datetime
 import plotly.express as px
+import time  # --- NEW: Added for the Security Tarpit ---
 
 # 1. Page Configuration
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
 
 # ----------------------------------------
-# 🔒 SECURITY: ANTI-BRUTE FORCE LOGIN
+# 🔒 SECURITY: TARPIT & SECRETS LOGIN
 # ----------------------------------------
 def check_password():
     """Returns `True` if the user had the correct password."""
     if st.session_state.get("password_correct", False):
         return True
 
-    # Initialize the attempt counter
     if "login_attempts" not in st.session_state:
         st.session_state["login_attempts"] = 0
 
     st.markdown("## 🔒 Restricted Access")
     st.write("Please enter the team password to access the Verification Search Engine.")
     
-    # If they failed 5 times, lock the screen completely
     if st.session_state["login_attempts"] >= 5:
-        st.error("🚫 Maximum login attempts exceeded. Access has been temporarily locked. Please refresh the page to try again later.")
+        st.error("🚫 Maximum login attempts exceeded for this session. Please refresh the page to try again.")
         return False
         
     with st.form("Login_Form"):
@@ -32,11 +31,22 @@ def check_password():
         submit = st.form_submit_button("Log In")
         
         if submit:
-            if password == 'StockX01!':
+            try:
+                correct_password = st.secrets["password"]
+            except Exception:
+                st.error("⚠️ App Secret not configured properly. Please add 'password' to Streamlit Secrets.")
+                return False
+
+            if password == correct_password:
                 st.session_state["password_correct"] = True
-                st.session_state["login_attempts"] = 0 # Reset on success
+                st.session_state["login_attempts"] = 0 
                 st.rerun()
             else:
+                # --- NEW: THE SECURITY TARPIT ---
+                # Forces the system to freeze for 3 seconds on a wrong guess. 
+                # This makes automated bot attacks mathematically impossible!
+                time.sleep(3) 
+                
                 st.session_state["login_attempts"] += 1
                 attempts_left = 5 - st.session_state["login_attempts"]
                 st.error(f"❌ Incorrect password. You have {attempts_left} attempts remaining.")
@@ -76,7 +86,6 @@ def fetch_latest_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical'])
 
-    # Safety Nets
     if 'Product Name' not in df_sop.columns:
         df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns:
@@ -105,20 +114,14 @@ def fetch_latest_data():
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
-    # Combine historical files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
-    
-    # Purge "nan" rows
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    # Merge SOP Links and Descriptions
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
-    
-    # Clean reference items just in case there's an empty row in SOP mapping
     ref_only_items = ref_only_items[~ref_only_items['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
     
     if not ref_only_items.empty:
@@ -137,7 +140,6 @@ def fetch_latest_data():
 
 df = fetch_latest_data()
 
-# --- SUPERCHARGED RESET ENGINE ---
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     if not df.empty:
