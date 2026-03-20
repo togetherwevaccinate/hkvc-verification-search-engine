@@ -8,27 +8,38 @@ import plotly.express as px
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
 
 # ----------------------------------------
-# 🔒 SECURITY: PASSWORD LOGIN SCREEN
+# 🔒 SECURITY: ANTI-BRUTE FORCE LOGIN
 # ----------------------------------------
 def check_password():
     """Returns `True` if the user had the correct password."""
     if st.session_state.get("password_correct", False):
         return True
 
+    # Initialize the attempt counter
+    if "login_attempts" not in st.session_state:
+        st.session_state["login_attempts"] = 0
+
     st.markdown("## 🔒 Restricted Access")
     st.write("Please enter the team password to access the Verification Search Engine.")
     
+    # If they failed 5 times, lock the screen completely
+    if st.session_state["login_attempts"] >= 5:
+        st.error("🚫 Maximum login attempts exceeded. Access has been temporarily locked. Please refresh the page to try again later.")
+        return False
+        
     with st.form("Login_Form"):
         password = st.text_input("Password", type="password")
         submit = st.form_submit_button("Log In")
         
         if submit:
-            # --- PASSWORD UPDATED HERE ---
             if password == 'StockX01!':
                 st.session_state["password_correct"] = True
+                st.session_state["login_attempts"] = 0 # Reset on success
                 st.rerun()
             else:
-                st.error("❌ Incorrect password. Please try again.")
+                st.session_state["login_attempts"] += 1
+                attempts_left = 5 - st.session_state["login_attempts"]
+                st.error(f"❌ Incorrect password. You have {attempts_left} attempts remaining.")
     return False
 
 # Stop the app from loading anything else if the password is wrong or hasn't been entered yet
