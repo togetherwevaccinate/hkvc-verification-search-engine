@@ -124,12 +124,11 @@ df = fetch_latest_data()
 
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
+    st.session_state['last_logged_query'] = "" # Reset the logger memory too
     if not df.empty:
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
-# --- NEW: SIDEBAR IMAGE HELPER ---
-# This tiny engine quickly finds the picture to show in the sidebar!
 def get_sidebar_image(product_name):
     base_dir = "images"
     for ext in ['.png', '.jpg', '.jpeg']:
@@ -157,9 +156,8 @@ if not df.empty:
         
         if not recent_returns.empty:
             for _, row in recent_returns.iterrows():
-                # --- NEW: 2-COLUMN SIDEBAR LAYOUT ---
                 with st.sidebar.container():
-                    col1, col2 = st.columns([1, 3]) # 1 part image, 3 parts text
+                    col1, col2 = st.columns([1, 3])
                     
                     with col1:
                         img = get_sidebar_image(row['Product Name'])
@@ -217,7 +215,7 @@ if not df.empty:
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
 # ----------------------------------------
-# 3. MAIN SEARCH INTERFACE
+# 3. MAIN SEARCH INTERFACE & LOGGING
 # ----------------------------------------
 st.markdown("### Search Database")
 
@@ -241,19 +239,32 @@ results = pd.DataFrame()
 if search_query:
     if len(search_query) < 3:
         st.warning("⚠️ Please type at least 3 characters to start searching.")
-    elif not df.empty:
-        query_dashed = search_query.lower().replace(" ", "-")
-        query_spaced = search_query.lower()
+    else:
+        # --- NEW: TOTAL USAGE TRACKER ---
+        # Only log if it's a new search (prevents duplicate logs on page refresh)
+        if st.session_state.get('last_logged_query') != search_query:
+            log_usage_path = "total_usage_log.csv"
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            usage_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
+            
+            if os.path.exists(log_usage_path): usage_df.to_csv(log_usage_path, mode='a', header=False, index=False)
+            else: usage_df.to_csv(log_usage_path, index=False)
+            
+            st.session_state['last_logged_query'] = search_query
 
-        results = df[
-            df['Product Name'].str.lower().str.contains(query_dashed, na=False) |
-            df['Product Name'].str.lower().str.contains(query_spaced, na=False) |
-            df['Order Number'].str.lower().str.contains(query_spaced, na=False) |
-            df['SKU'].str.lower().str.contains(query_spaced, na=False)
-        ]
+        if not df.empty:
+            query_dashed = search_query.lower().replace(" ", "-")
+            query_spaced = search_query.lower()
+
+            results = df[
+                df['Product Name'].str.lower().str.contains(query_dashed, na=False) |
+                df['Product Name'].str.lower().str.contains(query_spaced, na=False) |
+                df['Order Number'].str.lower().str.contains(query_spaced, na=False) |
+                df['SKU'].str.lower().str.contains(query_spaced, na=False)
+            ]
 
 # ----------------------------------------
-# 4. DISPLAY RESULTS & ZERO RESULT LOGGING
+# 4. DISPLAY RESULTS
 # ----------------------------------------
 if not results.empty:
     
@@ -406,15 +417,19 @@ if not results.empty:
                 st.info("📂 **Feature Setup Required**")
                 st.write(f"To use this feature, create a new folder named `detail_images` on your GitHub. Upload your extra photos there and name them like `{product_name}_1.jpg`!")
 
-elif search_query:
+elif search_query and len(search_query) >= 3:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
     
+    # ZERO RESULT TRACKER (Still only logs when NO records are found)
     log_file_path = "missed_searches.csv"
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
     
-    if os.path.exists(log_file_path): log_df.to_csv(log_file_path, mode='a', header=False, index=False)
-    else: log_df.to_csv(log_file_path, index=False)
+    # We use session state here too so it doesn't log the missed search 5 times on refresh!
+    if st.session_state.get('last_missed_query') != search_query:
+        if os.path.exists(log_file_path): log_df.to_csv(log_file_path, mode='a', header=False, index=False)
+        else: log_df.to_csv(log_file_path, index=False)
+        st.session_state['last_missed_query'] = search_query
 
 # ----------------------------------------
 # 5. FOOTER / SUPPORT & SUGGESTIONS
@@ -434,27 +449,53 @@ st.code(suggestion_template, language="text")
 
 st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
 
-# --- ADMIN PANEL ---
-with st.expander("🛠️ Admin: View Missed Searches"):
-    st.caption("This log tracks items your team searched for that returned 0 results. It helps you find which items you should add to your SOP mapping!")
+# --- NEW: UPGRADED ADMIN DATA HUB ---
+with st.expander("🛠️ Admin: View Search Logs & Analytics"):
+    st.caption("Secure area to download tool usage metrics and review missing SOP items to present to management.")
     
     admin_password = st.text_input("Enter Admin Password to unlock logs:", type="password", key="admin_pw")
     correct_admin_pw = st.secrets.get("admin_password", "StockXAdmin!")
     
     if admin_password == correct_admin_pw:
         st.success("🔓 Admin access granted.")
-        if os.path.exists("missed_searches.csv"):
-            missed_df = pd.read_csv("missed_searches.csv")
-            st.dataframe(missed_df, use_container_width=True, hide_index=True)
-            
-            csv_missed = missed_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Missed Searches CSV",
-                data=csv_missed,
-                file_name="missed_searches_log.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No missed searches logged yet!")
+        
+        # Created tabs inside the admin panel for easy viewing
+        admin_tab1, admin_tab2 = st.tabs(["📈 Total Usage Log", "❌ Missed Searches Log"])
+        
+        with admin_tab1:
+            st.markdown("**Total Search Volume**")
+            st.caption("Use this data to prove Adoption Rate and ROI to management.")
+            if os.path.exists("total_usage_log.csv"):
+                usage_df = pd.read_csv("total_usage_log.csv")
+                st.dataframe(usage_df.tail(50), use_container_width=True, hide_index=True) # Shows last 50 for speed
+                
+                csv_usage = usage_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Complete Usage Data",
+                    data=csv_usage,
+                    file_name="total_usage_log.csv",
+                    mime="text/csv",
+                    key="dl_usage"
+                )
+            else:
+                st.info("No searches logged yet. Type something into the search bar above to generate the first log!")
+                
+        with admin_tab2:
+            st.markdown("**Missed Searches (Zero Results)**")
+            st.caption("These items were searched for but not found. Update your SOP_mapping.csv to include them!")
+            if os.path.exists("missed_searches.csv"):
+                missed_df = pd.read_csv("missed_searches.csv")
+                st.dataframe(missed_df.tail(50), use_container_width=True, hide_index=True)
+                
+                csv_missed = missed_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Missed Searches Log",
+                    data=csv_missed,
+                    file_name="missed_searches_log.csv",
+                    mime="text/csv",
+                    key="dl_missed"
+                )
+            else:
+                st.info("No missed searches logged yet!")
     elif admin_password != "":
         st.error("❌ Incorrect Admin Password.")
