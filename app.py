@@ -12,7 +12,6 @@ st.set_page_config(page_title="Verification Returns & Pass Records", layout="wid
 # 🔒 SECURITY: TARPIT & SECRETS LOGIN
 # ----------------------------------------
 def check_password():
-    """Returns `True` if the user had the correct password."""
     if st.session_state.get("password_correct", False):
         return True
 
@@ -48,7 +47,6 @@ def check_password():
                 st.error(f"❌ Incorrect password. You have {attempts_left} attempts remaining.")
     return False
 
-# Stop the app from loading anything else if the password is wrong or hasn't been entered yet
 if not check_password():
     st.stop()
 
@@ -56,7 +54,6 @@ if not check_password():
 # 🔓 THE REST OF THE APP STARTS HERE 
 # ========================================
 
-# Get real file modified date
 csv_file_path = '2026 IRR_Pass rate report - IRR.csv'
 try:
     file_timestamp = os.path.getmtime(csv_file_path)
@@ -64,10 +61,8 @@ try:
 except FileNotFoundError:
     update_date = "Unknown Date"
 
-# Display the title
 st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
 
-# --- CACHE BUSTER ---
 @st.cache_data
 def fetch_latest_data():
     try:
@@ -82,21 +77,14 @@ def fetch_latest_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical'])
 
-    if 'Product Name' not in df_sop.columns:
-        df_sop['Product Name'] = 'Unknown'
-    if 'SOP Link' not in df_sop.columns:
-        df_sop['SOP Link'] = 'None'
-    if 'Description' not in df_sop.columns:
-        df_sop['Description'] = 'None'
-    if 'SKU' not in df_sop.columns:
-        df_sop['SKU'] = 'Unknown'
-    if 'Vertical' not in df_sop.columns:
-        df_sop['Vertical'] = 'N/A'
+    if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
+    if 'SOP Link' not in df_sop.columns: df_sop['SOP Link'] = 'None'
+    if 'Description' not in df_sop.columns: df_sop['Description'] = 'None'
+    if 'SKU' not in df_sop.columns: df_sop['SKU'] = 'Unknown'
+    if 'Vertical' not in df_sop.columns: df_sop['Vertical'] = 'N/A'
 
-    if 'SKU' not in df_irr.columns:
-        df_irr['SKU'] = 'Unknown'
-    if 'SKU' not in df_pass.columns:
-        df_pass['SKU'] = 'Unknown'
+    if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
+    if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
 
     df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
     
@@ -126,12 +114,10 @@ def fetch_latest_data():
         ref_only_items['Category'] = 'Reference'
         ref_only_items['Notes'] = 'No historical orders. Reference only.'
         ref_only_items['Record Source'] = 'Reference Only'
-        
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
-    
     return df_combined
 
 df = fetch_latest_data()
@@ -141,6 +127,18 @@ def reset_to_home():
     if not df.empty:
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
+
+# --- NEW: SIDEBAR IMAGE HELPER ---
+# This tiny engine quickly finds the picture to show in the sidebar!
+def get_sidebar_image(product_name):
+    base_dir = "images"
+    for ext in ['.png', '.jpg', '.jpeg']:
+        img_path = os.path.join(base_dir, f"{product_name}{ext}")
+        if os.path.exists(img_path): return img_path
+    
+    default_path = os.path.join(base_dir, "default.png")
+    if os.path.exists(default_path): return default_path
+    return None
 
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
@@ -155,17 +153,25 @@ if not df.empty:
             (df['Record Source'] == 'IRR (Returned)') & 
             (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
         ]
-        
         recent_returns = strict_irr_data.tail(3)[::-1]
         
         if not recent_returns.empty:
             for _, row in recent_returns.iterrows():
-                st.sidebar.error(
-                    f"**{row['Product Name']}** \n"
-                    f"**SKU:** `{row['SKU']}`  \n"
-                    f"**Category:** `{row['Category']}`  \n"
-                    f":blue[**💬 Comment:** {row['Notes']}]"
-                )
+                # --- NEW: 2-COLUMN SIDEBAR LAYOUT ---
+                with st.sidebar.container():
+                    col1, col2 = st.columns([1, 3]) # 1 part image, 3 parts text
+                    
+                    with col1:
+                        img = get_sidebar_image(row['Product Name'])
+                        if img:
+                            st.image(img, use_container_width=True)
+                            
+                    with col2:
+                        st.error(
+                            f"**{row['Product Name']}** \n"
+                            f"**SKU:** `{row['SKU']}`  \n"
+                            f":blue[**💬** {row['Notes']}]"
+                        )
         else:
             st.sidebar.success("No recent returns found!")
 
@@ -182,13 +188,25 @@ if not df.empty:
         if not top_returns.empty:
             st.sidebar.markdown("**🔥 Top Returns**")
             for item, count in top_returns.items():
-                st.sidebar.warning(f"**{count} Returns:** {item}")
+                with st.sidebar.container():
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        img = get_sidebar_image(item)
+                        if img: st.image(img, use_container_width=True)
+                    with col2:
+                        st.warning(f"**{count} Returns:**\n{item}")
                 
         if not top_passes.empty:
             st.sidebar.write("") 
             st.sidebar.markdown("**✅ Top Passes**")
             for item, count in top_passes.items():
-                st.sidebar.success(f"**{count} Passes:** {item}")
+                with st.sidebar.container():
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        img = get_sidebar_image(item)
+                        if img: st.image(img, use_container_width=True)
+                    with col2:
+                        st.success(f"**{count} Passes:**\n{item}")
                 
         st.sidebar.markdown("---")
     
@@ -239,10 +257,8 @@ if search_query:
 # ----------------------------------------
 if not results.empty:
     
-    if 'SOP Link' not in results.columns:
-        results['SOP Link'] = 'None'
-    if 'Description' not in results.columns:
-        results['Description'] = 'None'
+    if 'SOP Link' not in results.columns: results['SOP Link'] = 'None'
+    if 'Description' not in results.columns: results['Description'] = 'None'
     
     st.markdown("---")
     
@@ -303,19 +319,9 @@ if not results.empty:
                     st.warning(formatted_desc)
                     st.write("") 
                 
-                img_path_png = os.path.join("images", f"{product_name}.png")
-                img_path_jpg = os.path.join("images", f"{product_name}.jpg")
-                img_path_jpeg = os.path.join("images", f"{product_name}.jpeg")
-                default_img_path = os.path.join("images", "default.png")
-                
-                if os.path.exists(img_path_png):
-                    st.image(img_path_png, width=400)
-                elif os.path.exists(img_path_jpg):
-                    st.image(img_path_jpg, width=400)
-                elif os.path.exists(img_path_jpeg):
-                    st.image(img_path_jpeg, width=400)
-                elif os.path.exists(default_img_path):
-                    st.image(default_img_path, width=400, caption="No Main Image Available")
+                img_path = get_sidebar_image(product_name)
+                if img_path:
+                    st.image(img_path, width=400)
                 else:
                     st.info("🖼️ No picture found. Add 'default.png' to images folder.")
                 
@@ -331,7 +337,6 @@ if not results.empty:
                 
                 if product_sop != 'None' and pd.notna(product_sop):
                     sop_links = [link.strip() for link in str(product_sop).split(',')]
-                    
                     for i, link in enumerate(sop_links):
                         if link: 
                             btn_name = "📘 Internal SOP" if len(sop_links) == 1 else f"📘 Internal SOP (Part {i+1})"
@@ -342,12 +347,9 @@ if not results.empty:
         st.write("")
         
         def traffic_light_colors(row):
-            if row['Record Source'] == 'Pass Order':
-                return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
-            elif row['Record Source'] == 'IRR (Returned)':
-                return ['background-color: rgba(248, 81, 73, 0.15)'] * len(row)
-            elif row['Record Source'] == 'Reference Only':
-                return ['background-color: rgba(128, 128, 128, 0.15)'] * len(row)
+            if row['Record Source'] == 'Pass Order': return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
+            elif row['Record Source'] == 'IRR (Returned)': return ['background-color: rgba(248, 81, 73, 0.15)'] * len(row)
+            elif row['Record Source'] == 'Reference Only': return ['background-color: rgba(128, 128, 128, 0.15)'] * len(row)
             return [''] * len(row)
 
         display_columns = ['Order Number', 'Product Name', 'SKU', 'Return Reason', 'Category', 'Vertical', 'Record Source']
@@ -361,12 +363,9 @@ if not results.empty:
             notes_data = results[(results['Notes'] != 'None') & (results['Notes'].notna())]
             if not notes_data.empty:
                 for index, row in notes_data.iterrows():
-                    if row['Record Source'] == 'IRR (Returned)':
-                        status_icon = "❌"
-                    elif row['Record Source'] == 'Pass Order':
-                        status_icon = "✅"
-                    else:
-                        status_icon = "ℹ️"
+                    if row['Record Source'] == 'IRR (Returned)': status_icon = "❌"
+                    elif row['Record Source'] == 'Pass Order': status_icon = "✅"
+                    else: status_icon = "ℹ️"
                     st.markdown(f"**{status_icon} Order {row['Order Number']} ({row['Return Reason']}):** {row['Notes']}")
             else:
                 st.info("No detailed inspector notes left for these orders.")
@@ -410,15 +409,12 @@ if not results.empty:
 elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
     
-    # Silently write missing search queries to a log file
     log_file_path = "missed_searches.csv"
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
     
-    if os.path.exists(log_file_path):
-        log_df.to_csv(log_file_path, mode='a', header=False, index=False)
-    else:
-        log_df.to_csv(log_file_path, index=False)
+    if os.path.exists(log_file_path): log_df.to_csv(log_file_path, mode='a', header=False, index=False)
+    else: log_df.to_csv(log_file_path, index=False)
 
 # ----------------------------------------
 # 5. FOOTER / SUPPORT & SUGGESTIONS
@@ -438,15 +434,11 @@ st.code(suggestion_template, language="text")
 
 st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
 
-# --- NEW: PASSWORD-PROTECTED ADMIN PANEL ---
+# --- ADMIN PANEL ---
 with st.expander("🛠️ Admin: View Missed Searches"):
     st.caption("This log tracks items your team searched for that returned 0 results. It helps you find which items you should add to your SOP mapping!")
     
-    # Require an Admin password to view the contents
-    # I have also added it to pull from st.secrets if you want to hide it later!
     admin_password = st.text_input("Enter Admin Password to unlock logs:", type="password", key="admin_pw")
-    
-    # 🛑 DEFAULT ADMIN PASSWORD SET HERE 🛑
     correct_admin_pw = st.secrets.get("admin_password", "StockXAdmin!")
     
     if admin_password == correct_admin_pw:
