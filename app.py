@@ -42,7 +42,6 @@ def fetch_latest_data():
         df_sop['Description'] = 'None'
     if 'SKU' not in df_sop.columns:
         df_sop['SKU'] = 'Unknown'
-    # --- NEW: Vertical Safety Net ---
     if 'Vertical' not in df_sop.columns:
         df_sop['Vertical'] = 'N/A'
 
@@ -83,7 +82,6 @@ def fetch_latest_data():
         ref_only_items['Order Number'] = 'N/A'
         ref_only_items['Return Reason'] = 'None'
         ref_only_items['Category'] = 'Reference'
-        # The code now keeps the 'Vertical' straight from your SOP_mapping.csv instead of forcing 'N/A'
         ref_only_items['Notes'] = 'No historical orders. Reference only.'
         ref_only_items['Record Source'] = 'Reference Only'
         
@@ -100,7 +98,6 @@ df = fetch_latest_data()
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     if not df.empty:
-        # This forces the app to re-check all 3 filter boxes!
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
@@ -208,7 +205,8 @@ if not results.empty:
     
     st.markdown("---")
     
-    tab1, tab2 = st.tabs(["📊 Analytics Dashboard", "📋 Raw Data Log"])
+    # --- NEW: ADDED TAB 3 FOR DETAIL PHOTOS ---
+    tab1, tab2, tab3 = st.tabs(["📊 Analytics Dashboard", "📋 Raw Data Log", "📸 Detail Photos"])
     
     with tab1:
         left_col, right_col = st.columns([3, 1])
@@ -277,7 +275,7 @@ if not results.empty:
                 elif os.path.exists(img_path_jpeg):
                     st.image(img_path_jpeg, width=400)
                 elif os.path.exists(default_img_path):
-                    st.image(default_img_path, width=400, caption="No Image Available")
+                    st.image(default_img_path, width=400, caption="No Main Image Available")
                 else:
                     st.info("🖼️ No picture found. Add 'default.png' to images folder.")
                 
@@ -343,6 +341,35 @@ if not results.empty:
             file_name='search_results_anonymous.csv',
             mime='text/csv',
         )
+
+    # --- NEW: TAB 3 FOR DETAIL PHOTOS ---
+    with tab3:
+        st.markdown("### 📸 Extra Reference & Detail Photos")
+        st.caption("Detailed physical shots and reference guides for this item.")
+        
+        unique_products = results['Product Name'].unique()
+        if len(unique_products) > 0:
+            product_name = unique_products[0]
+            detail_dir = "detail_images"
+            
+            if os.path.exists(detail_dir):
+                valid_exts = ('.png', '.jpg', '.jpeg')
+                # Finds any image in the folder that starts with the product name
+                extra_imgs = [f for f in os.listdir(detail_dir) if f.startswith(product_name) and f.lower().endswith(valid_exts)]
+                
+                if extra_imgs:
+                    # Creates a nice 2-column gallery
+                    cols = st.columns(2)
+                    for i, img_file in enumerate(extra_imgs):
+                        with cols[i % 2]:
+                            st.image(os.path.join(detail_dir, img_file), use_container_width=True, caption=img_file)
+                else:
+                    st.info(f"No extra detail photos found for **{product_name}**.")
+                    st.caption(f"💡 Want to add some? Upload them to the `{detail_dir}` folder and name them like `{product_name}_1.jpg`, `{product_name}_2.jpg`, etc.")
+            else:
+                st.info("📂 **Feature Setup Required**")
+                st.write(f"To use this feature, create a new folder named `detail_images` on your GitHub. Upload your extra photos there and name them like `{product_name}_1.jpg`!")
+
 elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
 
