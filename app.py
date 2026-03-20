@@ -3,7 +3,7 @@ import streamlit as st
 import os
 import datetime
 import plotly.express as px
-import time  # --- NEW: Added for the Security Tarpit ---
+import time
 
 # 1. Page Configuration
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
@@ -42,11 +42,7 @@ def check_password():
                 st.session_state["login_attempts"] = 0 
                 st.rerun()
             else:
-                # --- NEW: THE SECURITY TARPIT ---
-                # Forces the system to freeze for 3 seconds on a wrong guess. 
-                # This makes automated bot attacks mathematically impossible!
                 time.sleep(3) 
-                
                 st.session_state["login_attempts"] += 1
                 attempts_left = 5 - st.session_state["login_attempts"]
                 st.error(f"❌ Incorrect password. You have {attempts_left} attempts remaining.")
@@ -239,7 +235,7 @@ if search_query:
         ]
 
 # ----------------------------------------
-# 4. DISPLAY RESULTS
+# 4. DISPLAY RESULTS & ZERO RESULT LOGGING
 # ----------------------------------------
 if not results.empty:
     
@@ -413,6 +409,16 @@ if not results.empty:
 
 elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
+    
+    # Silently write missing search queries to a log file
+    log_file_path = "missed_searches.csv"
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
+    
+    if os.path.exists(log_file_path):
+        log_df.to_csv(log_file_path, mode='a', header=False, index=False)
+    else:
+        log_df.to_csv(log_file_path, index=False)
 
 # ----------------------------------------
 # 5. FOOTER / SUPPORT & SUGGESTIONS
@@ -431,3 +437,32 @@ Photos (if necessary) : """
 st.code(suggestion_template, language="text")
 
 st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
+
+# --- NEW: PASSWORD-PROTECTED ADMIN PANEL ---
+with st.expander("🛠️ Admin: View Missed Searches"):
+    st.caption("This log tracks items your team searched for that returned 0 results. It helps you find which items you should add to your SOP mapping!")
+    
+    # Require an Admin password to view the contents
+    # I have also added it to pull from st.secrets if you want to hide it later!
+    admin_password = st.text_input("Enter Admin Password to unlock logs:", type="password", key="admin_pw")
+    
+    # 🛑 DEFAULT ADMIN PASSWORD SET HERE 🛑
+    correct_admin_pw = st.secrets.get("admin_password", "StockXAdmin!")
+    
+    if admin_password == correct_admin_pw:
+        st.success("🔓 Admin access granted.")
+        if os.path.exists("missed_searches.csv"):
+            missed_df = pd.read_csv("missed_searches.csv")
+            st.dataframe(missed_df, use_container_width=True, hide_index=True)
+            
+            csv_missed = missed_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Missed Searches CSV",
+                data=csv_missed,
+                file_name="missed_searches_log.csv",
+                mime="text/csv"
+            )
+        else:
+            st.info("No missed searches logged yet!")
+    elif admin_password != "":
+        st.error("❌ Incorrect Admin Password.")
