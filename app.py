@@ -18,6 +18,7 @@ except FileNotFoundError:
 # Display the title
 st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
 
+# --- CACHE BUSTER ---
 @st.cache_data
 def fetch_latest_data():
     try:
@@ -63,8 +64,7 @@ def fetch_latest_data():
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     
-    # --- NEW: PURGE "nan" GHOST ROWS ---
-    # This specifically kills any blank rows that accidentally got converted to the word "nan"
+    # Purge "nan" rows
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
     # Merge SOP Links and Descriptions
@@ -73,7 +73,7 @@ def fetch_latest_data():
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
     
-    # Also clean reference items just in case there's an empty row in SOP mapping!
+    # Clean reference items just in case there's an empty row in SOP mapping
     ref_only_items = ref_only_items[~ref_only_items['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
     
     if not ref_only_items.empty:
@@ -97,6 +97,7 @@ df = fetch_latest_data()
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     if not df.empty:
+        # This forces the app to re-check all 3 filter boxes!
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
@@ -343,9 +344,20 @@ elif search_query:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
 
 # ----------------------------------------
-# 5. FOOTER / SUPPORT (Main Page)
+# 5. FOOTER / SUPPORT & SUGGESTIONS
 # ----------------------------------------
 st.markdown("---")
-st.markdown("#### 🛠️ Need Help?")
-st.caption("Encountered a technical issue or have feedback?")
-st.link_button("💬 Contact Host on Slack", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
+st.markdown("#### 💡 Product Suggestion & Support")
+st.caption("Got a new item to add or encountered an issue? **Click the copy icon in the top right of the box below**, open Slack, and send the host a message!")
+
+suggestion_template = """Product Suggestion Form:
+Item Slug (eg: http://stockx.com/New-Balance-327-Light-Beige-W) : 
+Category (Sneakers/Shoes, Apparel, Accessories, Collectibles, Electronics, Handbags/Luxury, Trading Cards) : 
+SKU (if necessary) : 
+Encore Order (if necessary) : 
+Photos (if necessary) : """
+
+# The st.code block automatically gives users a native "Copy" button!
+st.code(suggestion_template, language="text")
+
+st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
