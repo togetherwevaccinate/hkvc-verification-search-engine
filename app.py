@@ -31,7 +31,7 @@ def fetch_latest_data():
     try:
         df_sop = pd.read_csv('SOP_mapping.csv')
     except FileNotFoundError:
-        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU'])
+        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical'])
 
     # Safety Nets
     if 'Product Name' not in df_sop.columns:
@@ -42,6 +42,9 @@ def fetch_latest_data():
         df_sop['Description'] = 'None'
     if 'SKU' not in df_sop.columns:
         df_sop['SKU'] = 'Unknown'
+    # --- NEW: Vertical Safety Net ---
+    if 'Vertical' not in df_sop.columns:
+        df_sop['Vertical'] = 'N/A'
 
     if 'SKU' not in df_irr.columns:
         df_irr['SKU'] = 'Unknown'
@@ -80,7 +83,7 @@ def fetch_latest_data():
         ref_only_items['Order Number'] = 'N/A'
         ref_only_items['Return Reason'] = 'None'
         ref_only_items['Category'] = 'Reference'
-        ref_only_items['Vertical'] = 'N/A'
+        # The code now keeps the 'Vertical' straight from your SOP_mapping.csv instead of forcing 'N/A'
         ref_only_items['Notes'] = 'No historical orders. Reference only.'
         ref_only_items['Record Source'] = 'Reference Only'
         
@@ -357,7 +360,6 @@ SKU (if necessary) :
 Encore Order (if necessary) : 
 Photos (if necessary) : """
 
-# The st.code block automatically gives users a native "Copy" button!
 st.code(suggestion_template, language="text")
 
 st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
