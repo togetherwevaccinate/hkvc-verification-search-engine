@@ -7,6 +7,38 @@ import plotly.express as px
 # 1. Page Configuration
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
 
+# ----------------------------------------
+# 🔒 SECURITY: PASSWORD LOGIN SCREEN
+# ----------------------------------------
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    if st.session_state.get("password_correct", False):
+        return True
+
+    st.markdown("## 🔒 Restricted Access")
+    st.write("Please enter the team password to access the Verification Search Engine.")
+    
+    with st.form("Login_Form"):
+        password = st.text_input("Password", type="password")
+        submit = st.form_submit_button("Log In")
+        
+        if submit:
+            # --- PASSWORD UPDATED HERE ---
+            if password == 'StockX01!':
+                st.session_state["password_correct"] = True
+                st.rerun()
+            else:
+                st.error("❌ Incorrect password. Please try again.")
+    return False
+
+# Stop the app from loading anything else if the password is wrong or hasn't been entered yet
+if not check_password():
+    st.stop()
+
+# ========================================
+# 🔓 THE REST OF THE APP STARTS HERE 
+# ========================================
+
 # Get real file modified date
 csv_file_path = '2026 IRR_Pass rate report - IRR.csv'
 try:
@@ -341,7 +373,6 @@ if not results.empty:
             mime='text/csv',
         )
 
-    # --- UPDATED: TAB 3 FOR DETAIL PHOTOS (SMALLER IMAGES) ---
     with tab3:
         st.markdown("### 📸 Extra Reference & Detail Photos")
         st.caption("Detailed physical shots and reference guides for this item.")
@@ -356,11 +387,9 @@ if not results.empty:
                 extra_imgs = [f for f in os.listdir(detail_dir) if f.startswith(product_name) and f.lower().endswith(valid_exts)]
                 
                 if extra_imgs:
-                    # Created a 3-column grid to naturally shrink the images
                     cols = st.columns(3)
                     for i, img_file in enumerate(extra_imgs):
                         with cols[i % 3]:
-                            # Locked the width to 250px so they look like neat squares!
                             st.image(os.path.join(detail_dir, img_file), width=250, caption=img_file)
                 else:
                     st.info(f"No extra detail photos found for **{product_name}**.")
