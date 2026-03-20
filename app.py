@@ -124,7 +124,7 @@ df = fetch_latest_data()
 
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
-    st.session_state['last_logged_query'] = "" # Reset the logger memory too
+    st.session_state['last_logged_query'] = "" 
     if not df.empty:
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
@@ -158,12 +158,10 @@ if not df.empty:
             for _, row in recent_returns.iterrows():
                 with st.sidebar.container():
                     col1, col2 = st.columns([1, 3])
-                    
                     with col1:
                         img = get_sidebar_image(row['Product Name'])
                         if img:
                             st.image(img, use_container_width=True)
-                            
                     with col2:
                         st.error(
                             f"**{row['Product Name']}** \n"
@@ -240,8 +238,6 @@ if search_query:
     if len(search_query) < 3:
         st.warning("⚠️ Please type at least 3 characters to start searching.")
     else:
-        # --- NEW: TOTAL USAGE TRACKER ---
-        # Only log if it's a new search (prevents duplicate logs on page refresh)
         if st.session_state.get('last_logged_query') != search_query:
             log_usage_path = "total_usage_log.csv"
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -420,12 +416,10 @@ if not results.empty:
 elif search_query and len(search_query) >= 3:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
     
-    # ZERO RESULT TRACKER (Still only logs when NO records are found)
     log_file_path = "missed_searches.csv"
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
     
-    # We use session state here too so it doesn't log the missed search 5 times on refresh!
     if st.session_state.get('last_missed_query') != search_query:
         if os.path.exists(log_file_path): log_df.to_csv(log_file_path, mode='a', header=False, index=False)
         else: log_df.to_csv(log_file_path, index=False)
@@ -449,17 +443,23 @@ st.code(suggestion_template, language="text")
 
 st.link_button("💬 Open Host's Slack Profile", "https://stockx.enterprise.slack.com/team/U01AN8XNC9H")
 
-# --- NEW: UPGRADED ADMIN DATA HUB ---
+# --- ADMIN PANEL WITH FULL SECRETS INTEGRATION ---
 with st.expander("🛠️ Admin: View Search Logs & Analytics"):
     st.caption("Secure area to download tool usage metrics and review missing SOP items to present to management.")
     
     admin_password = st.text_input("Enter Admin Password to unlock logs:", type="password", key="admin_pw")
-    correct_admin_pw = st.secrets.get("admin_password", "StockXAdmin!")
     
-    if admin_password == correct_admin_pw:
+    # 🛑 NOW PULLS SECURELY FROM THE VAULT! 🛑
+    try:
+        correct_admin_pw = st.secrets["admin_password"]
+    except Exception:
+        # If the secret isn't set up yet, the admin panel simply won't unlock to keep things safe.
+        correct_admin_pw = None
+        st.error("⚠️ Admin Secret not configured. Please add 'admin_password' to Streamlit Secrets.")
+    
+    if admin_password == correct_admin_pw and correct_admin_pw is not None:
         st.success("🔓 Admin access granted.")
         
-        # Created tabs inside the admin panel for easy viewing
         admin_tab1, admin_tab2 = st.tabs(["📈 Total Usage Log", "❌ Missed Searches Log"])
         
         with admin_tab1:
@@ -467,7 +467,7 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             st.caption("Use this data to prove Adoption Rate and ROI to management.")
             if os.path.exists("total_usage_log.csv"):
                 usage_df = pd.read_csv("total_usage_log.csv")
-                st.dataframe(usage_df.tail(50), use_container_width=True, hide_index=True) # Shows last 50 for speed
+                st.dataframe(usage_df.tail(50), use_container_width=True, hide_index=True)
                 
                 csv_usage = usage_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
@@ -498,4 +498,6 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
     elif admin_password != "":
+        # Adding a 2-second tarpit to the admin panel too!
+        time.sleep(2)
         st.error("❌ Incorrect Admin Password.")
