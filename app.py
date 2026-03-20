@@ -205,7 +205,6 @@ if not results.empty:
     
     st.markdown("---")
     
-    # --- NEW: ADDED TAB 3 FOR DETAIL PHOTOS ---
     tab1, tab2, tab3 = st.tabs(["📊 Analytics Dashboard", "📋 Raw Data Log", "📸 Detail Photos"])
     
     with tab1:
@@ -342,7 +341,7 @@ if not results.empty:
             mime='text/csv',
         )
 
-    # --- NEW: TAB 3 FOR DETAIL PHOTOS ---
+    # --- UPDATED: TAB 3 FOR DETAIL PHOTOS (SMALLER IMAGES) ---
     with tab3:
         st.markdown("### 📸 Extra Reference & Detail Photos")
         st.caption("Detailed physical shots and reference guides for this item.")
@@ -354,15 +353,15 @@ if not results.empty:
             
             if os.path.exists(detail_dir):
                 valid_exts = ('.png', '.jpg', '.jpeg')
-                # Finds any image in the folder that starts with the product name
                 extra_imgs = [f for f in os.listdir(detail_dir) if f.startswith(product_name) and f.lower().endswith(valid_exts)]
                 
                 if extra_imgs:
-                    # Creates a nice 2-column gallery
-                    cols = st.columns(2)
+                    # Created a 3-column grid to naturally shrink the images
+                    cols = st.columns(3)
                     for i, img_file in enumerate(extra_imgs):
-                        with cols[i % 2]:
-                            st.image(os.path.join(detail_dir, img_file), use_container_width=True, caption=img_file)
+                        with cols[i % 3]:
+                            # Locked the width to 250px so they look like neat squares!
+                            st.image(os.path.join(detail_dir, img_file), width=250, caption=img_file)
                 else:
                     st.info(f"No extra detail photos found for **{product_name}**.")
                     st.caption(f"💡 Want to add some? Upload them to the `{detail_dir}` folder and name them like `{product_name}_1.jpg`, `{product_name}_2.jpg`, etc.")
