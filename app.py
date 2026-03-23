@@ -172,7 +172,6 @@ if not df.empty:
                         is_exception = (exception_status == 'TRUE')
                         exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                         
-                        # Fix: String concatenation to completely remove invisible Markdown code-block formatting
                         compact_text = (
                             f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
                             f"<b>{row['Product Name']}</b><br>"
@@ -196,7 +195,8 @@ if not df.empty:
         top_passes = pass_counts[pass_counts > 1].head(3)
         
         if not top_returns.empty:
-            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>🔥 Top Returns</p>", unsafe_allow_html=True)
+            # --- UPDATED: Replaced 🔥 with ❌ ---
+            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>❌ Top Returns</p>", unsafe_allow_html=True)
             for item, count in top_returns.items():
                 with st.sidebar.container():
                     col1, col2 = st.columns([1, 2.5])
