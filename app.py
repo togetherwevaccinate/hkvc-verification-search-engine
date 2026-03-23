@@ -75,13 +75,16 @@ def fetch_latest_data():
     try:
         df_sop = pd.read_csv('SOP_mapping.csv')
     except FileNotFoundError:
-        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical'])
+        # Added Note Date to fallback
+        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date'])
 
     if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns: df_sop['SOP Link'] = 'None'
     if 'Description' not in df_sop.columns: df_sop['Description'] = 'None'
     if 'SKU' not in df_sop.columns: df_sop['SKU'] = 'Unknown'
     if 'Vertical' not in df_sop.columns: df_sop['Vertical'] = 'N/A'
+    # --- NEW: Safety net for Note Date ---
+    if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
 
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
     if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
@@ -102,7 +105,8 @@ def fetch_latest_data():
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description']], on='Product Name', how='left')
+    # Pulling Note Date from SOP Mapping
+    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
@@ -116,7 +120,7 @@ def fetch_latest_data():
         ref_only_items['Record Source'] = 'Reference Only'
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
-    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None'}, inplace=True)
+    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': ''}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     return df_combined
 
@@ -266,6 +270,7 @@ if not results.empty:
     
     if 'SOP Link' not in results.columns: results['SOP Link'] = 'None'
     if 'Description' not in results.columns: results['Description'] = 'None'
+    if 'Note Date' not in results.columns: results['Note Date'] = ''
     
     st.markdown("---")
     
@@ -311,9 +316,15 @@ if not results.empty:
                 product_sku = results[results['Product Name'] == product_name]['SKU'].iloc[0]
                 product_sop = results[results['Product Name'] == product_name]['SOP Link'].iloc[0]
                 product_desc = results[results['Product Name'] == product_name]['Description'].iloc[0]
+                product_note_date = results[results['Product Name'] == product_name]['Note Date'].iloc[0]
                 
                 if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
-                    st.markdown("### 📢 Important Notes")
+                    # --- NEW: Dynamically add the date to the header if it exists ---
+                    if product_note_date and str(product_note_date).strip() != "" and str(product_note_date).lower() != "nan":
+                        st.markdown(f"### 📢 Important Notes *(Updated: {product_note_date})*")
+                    else:
+                        st.markdown("### 📢 Important Notes")
+                        
                     desc_text = str(product_desc).replace("\\n", "\n")
                     
                     if "\n" in desc_text:
@@ -378,7 +389,8 @@ if not results.empty:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        cols_to_drop = [col for col in ['SOP Link', 'Description'] if col in results.columns]
+        # Remove extra columns from the downloadable CSV so it stays clean
+        cols_to_drop = [col for col in ['SOP Link', 'Description', 'Note Date'] if col in results.columns]
         download_df = results.drop(columns=cols_to_drop)
         csv = download_df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -449,11 +461,9 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
     
     admin_password = st.text_input("Enter Admin Password to unlock logs:", type="password", key="admin_pw")
     
-    # 🛑 NOW PULLS SECURELY FROM THE VAULT! 🛑
     try:
         correct_admin_pw = st.secrets["admin_password"]
     except Exception:
-        # If the secret isn't set up yet, the admin panel simply won't unlock to keep things safe.
         correct_admin_pw = None
         st.error("⚠️ Admin Secret not configured. Please add 'admin_password' to Streamlit Secrets.")
     
@@ -498,6 +508,5 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
     elif admin_password != "":
-        # Adding a 2-second tarpit to the admin panel too!
         time.sleep(2)
         st.error("❌ Incorrect Admin Password.")
