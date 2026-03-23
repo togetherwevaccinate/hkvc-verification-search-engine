@@ -5,6 +5,13 @@ import datetime
 import plotly.express as px
 import time
 
+# --- NEW: Try to load Fuzzy Matching ---
+try:
+    from thefuzz import process
+    FUZZY_ENABLED = True
+except ImportError:
+    FUZZY_ENABLED = False
+
 # 1. Page Configuration
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
 
@@ -195,7 +202,6 @@ if not df.empty:
         top_passes = pass_counts[pass_counts > 1].head(3)
         
         if not top_returns.empty:
-            # --- UPDATED: Replaced 🔥 with ❌ ---
             st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>❌ Top Returns</p>", unsafe_allow_html=True)
             for item, count in top_returns.items():
                 with st.sidebar.container():
@@ -275,12 +281,27 @@ if search_query:
             query_dashed = search_query.lower().replace(" ", "-")
             query_spaced = search_query.lower()
 
+            # 1. Try Exact/Substring Match First
             results = df[
                 df['Product Name'].str.lower().str.contains(query_dashed, na=False) |
                 df['Product Name'].str.lower().str.contains(query_spaced, na=False) |
                 df['Order Number'].str.lower().str.contains(query_spaced, na=False) |
                 df['SKU'].str.lower().str.contains(query_spaced, na=False)
             ]
+            
+            # --- NEW: 2. Try Fuzzy Match if Exact Fails ---
+            if results.empty and FUZZY_ENABLED:
+                unique_products = df['Product Name'].dropna().unique().tolist()
+                
+                # Looks for the top 3 items that sound/spell similar
+                fuzzy_matches = process.extract(search_query, unique_products, limit=3)
+                
+                # Only accepts it if it's a 70% match or better (avoids pulling total junk)
+                good_matches = [m[0] for m in fuzzy_matches if m[1] >= 70]
+                
+                if good_matches:
+                    st.info(f"💡 No exact match found. Showing closest matches for: **{', '.join(good_matches)}**")
+                    results = df[df['Product Name'].isin(good_matches)]
 
 # ----------------------------------------
 # 4. DISPLAY RESULTS
