@@ -75,7 +75,6 @@ def fetch_latest_data():
     try:
         df_sop = pd.read_csv('SOP_mapping.csv')
     except FileNotFoundError:
-        # Added Note Date to fallback
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date'])
 
     if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
@@ -83,20 +82,22 @@ def fetch_latest_data():
     if 'Description' not in df_sop.columns: df_sop['Description'] = 'None'
     if 'SKU' not in df_sop.columns: df_sop['SKU'] = 'Unknown'
     if 'Vertical' not in df_sop.columns: df_sop['Vertical'] = 'N/A'
-    # --- NEW: Safety net for Note Date ---
     if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
 
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
     if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
+    
+    if 'Exception' not in df_irr.columns: df_irr['Exception'] = 'FALSE'
+    if 'Exception' not in df_pass.columns: df_pass['Exception'] = 'FALSE'
 
     df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
     
-    df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU']].copy()
+    df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU', 'Exception']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
     df_irr_clean['Product Name'] = df_irr_clean['Product Name'].astype(str).str.strip()
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
-    df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU']].copy()
+    df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU', 'Exception']].copy()
     df_pass_clean.rename(columns={'order_id': 'Order Number', 'trouble_reason': 'Return Reason', 'vertical': 'Vertical', 'name': 'Product Name', 'trouble_notes': 'Notes'}, inplace=True)
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
@@ -105,7 +106,6 @@ def fetch_latest_data():
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    # Pulling Note Date from SOP Mapping
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
@@ -118,9 +118,10 @@ def fetch_latest_data():
         ref_only_items['Category'] = 'Reference'
         ref_only_items['Notes'] = 'No historical orders. Reference only.'
         ref_only_items['Record Source'] = 'Reference Only'
+        ref_only_items['Exception'] = 'FALSE' 
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
-    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': ''}, inplace=True)
+    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     return df_combined
 
@@ -167,9 +168,15 @@ if not df.empty:
                         if img:
                             st.image(img, use_container_width=True)
                     with col2:
+                        # --- UPDATED: STRICT CHECKBOX (TRUE/FALSE) LOGIC ---
+                        exception_status = str(row['Exception']).strip().upper()
+                        is_exception = (exception_status == 'TRUE')
+                        exception_badge = "\n🛡️ **Exception: No Accountability**\n" if is_exception else ""
+                        
                         st.error(
                             f"**{row['Product Name']}** \n"
                             f"**SKU:** `{row['SKU']}`  \n"
+                            f"{exception_badge}"
                             f":blue[**💬** {row['Notes']}]"
                         )
         else:
@@ -271,6 +278,7 @@ if not results.empty:
     if 'SOP Link' not in results.columns: results['SOP Link'] = 'None'
     if 'Description' not in results.columns: results['Description'] = 'None'
     if 'Note Date' not in results.columns: results['Note Date'] = ''
+    if 'Exception' not in results.columns: results['Exception'] = 'FALSE'
     
     st.markdown("---")
     
@@ -319,7 +327,6 @@ if not results.empty:
                 product_note_date = results[results['Product Name'] == product_name]['Note Date'].iloc[0]
                 
                 if product_desc != 'None' and pd.notna(product_desc) and str(product_desc).strip() != "":
-                    # --- NEW: Dynamically add the date to the header if it exists ---
                     if product_note_date and str(product_note_date).strip() != "" and str(product_note_date).lower() != "nan":
                         st.markdown(f"### 📢 Important Notes *(Updated: {product_note_date})*")
                     else:
@@ -370,7 +377,7 @@ if not results.empty:
             elif row['Record Source'] == 'Reference Only': return ['background-color: rgba(128, 128, 128, 0.15)'] * len(row)
             return [''] * len(row)
 
-        display_columns = ['Order Number', 'Product Name', 'SKU', 'Return Reason', 'Category', 'Vertical', 'Record Source']
+        display_columns = ['Order Number', 'Product Name', 'SKU', 'Return Reason', 'Category', 'Vertical', 'Record Source', 'Exception']
         display_df = results[display_columns]
         styled_df = display_df.style.apply(traffic_light_colors, axis=1)
         
@@ -389,7 +396,6 @@ if not results.empty:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        # Remove extra columns from the downloadable CSV so it stays clean
         cols_to_drop = [col for col in ['SOP Link', 'Description', 'Note Date'] if col in results.columns]
         download_df = results.drop(columns=cols_to_drop)
         csv = download_df.to_csv(index=False).encode('utf-8')
