@@ -168,19 +168,19 @@ if not df.empty:
                         if img:
                             st.image(img, use_container_width=True)
                     with col2:
-                        # Compact custom HTML instead of bulky st.error
                         exception_status = str(row['Exception']).strip().upper()
                         is_exception = (exception_status == 'TRUE')
-                        exception_badge = "<span style='color: #d32f2f;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
+                        exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                         
-                        compact_text = f"""
-                        <div style="font-size: 13px; line-height: 1.3; margin-bottom: 15px;">
-                            <b>{row['Product Name']}</b><br>
-                            <span style="color: gray;">SKU: {row['SKU']}</span><br>
-                            {exception_badge}
-                            <span style="color: #1976d2;">💬 {row['Notes']}</span>
-                        </div>
-                        """
+                        # Fix: String concatenation to completely remove invisible Markdown code-block formatting
+                        compact_text = (
+                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
+                            f"<b>{row['Product Name']}</b><br>"
+                            f"<span style='color: gray;'>SKU: {row['SKU']}</span><br>"
+                            f"{exception_badge}"
+                            f"<span style='color: #64b5f6;'>💬 {row['Notes']}</span>"
+                            f"</div>"
+                        )
                         st.markdown(compact_text, unsafe_allow_html=True)
         else:
             st.sidebar.success("No recent returns found!")
@@ -196,7 +196,7 @@ if not df.empty:
         top_passes = pass_counts[pass_counts > 1].head(3)
         
         if not top_returns.empty:
-            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #d32f2f; margin-bottom: 5px;'>🔥 Top Returns</p>", unsafe_allow_html=True)
+            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>🔥 Top Returns</p>", unsafe_allow_html=True)
             for item, count in top_returns.items():
                 with st.sidebar.container():
                     col1, col2 = st.columns([1, 2.5])
@@ -204,15 +204,15 @@ if not df.empty:
                         img = get_sidebar_image(item)
                         if img: st.image(img, use_container_width=True)
                     with col2:
-                        compact_ret = f"""
-                        <div style="font-size: 13px; line-height: 1.3; margin-bottom: 10px;">
-                            <b>{count} Returns:</b><br>{item}
-                        </div>
-                        """
+                        compact_ret = (
+                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
+                            f"<b>{count} Returns:</b><br>{item}"
+                            f"</div>"
+                        )
                         st.markdown(compact_ret, unsafe_allow_html=True)
                 
         if not top_passes.empty:
-            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #2e7d32; margin-top: 10px; margin-bottom: 5px;'>✅ Top Passes</p>", unsafe_allow_html=True)
+            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #4caf50; margin-top: 10px; margin-bottom: 5px;'>✅ Top Passes</p>", unsafe_allow_html=True)
             for item, count in top_passes.items():
                 with st.sidebar.container():
                     col1, col2 = st.columns([1, 2.5])
@@ -220,11 +220,11 @@ if not df.empty:
                         img = get_sidebar_image(item)
                         if img: st.image(img, use_container_width=True)
                     with col2:
-                        compact_pass = f"""
-                        <div style="font-size: 13px; line-height: 1.3; margin-bottom: 10px;">
-                            <b>{count} Passes:</b><br>{item}
-                        </div>
-                        """
+                        compact_pass = (
+                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
+                            f"<b>{count} Passes:</b><br>{item}"
+                            f"</div>"
+                        )
                         st.markdown(compact_pass, unsafe_allow_html=True)
                 
         st.sidebar.markdown("---")
