@@ -73,9 +73,9 @@ Order Number,Name,Team,Return Reason,Category,Vertical,Item,SKU,Exception,2nd re
 04-WKSLXB5W03,Thomas Lee,Ekko ,EU-Return Policy,UNSELINV,sneakers,adidas-Yeezy-700-V3-Azael,FW4980,TRUE,FALSE,FALSE,taken picture,2 Mar - 8 Mar,Mar
 08-925G2TCBBM,Chun Lam,Edward,Received Damaged Item,SI,shoes,UGG-Classic-Short-II-Boot-Chestnut-W,1016223-CHE,FALSE,TRUE,FALSE,????,2 Mar - 8 Mar,Mar
 04-0T3YT06RSP,Jacky Chow,Lirik,Suspected Inauthentic,WS/WP,accessories,Celine-Ski-Mask-Black-4S196CMBC38BL,4S196CMBC.38BL,TRUE,FALSE,FALSE,Catalog error,9 Mar - 15 Mar,Mar
-,,,,,,,,FALSE,FALSE,FALSE,,,
-,,,,,,,,FALSE,FALSE,FALSE,,,
-,,,,,,,,FALSE,FALSE,FALSE,,,
+04-6KD4Q05PDV,Kevin Hung,Ekko ,Received Wrong or Mismatched Size,WS/WP,sneakers,ASICS-Gel-Kayano-121-Silver-Green,1203A759-100,FALSE,FALSE,FALSE,Confirm wrong size,16 Mar - 22 Mar,Mar
+04-92KNP7D761,Clovis Poon,Ekko ,Received Wrong or Mismatched Size,WS/WP,sneakers,Nike-Book-1-Forrest-Gump,FJ4249-105/FJ4250-105,TRUE,FALSE,FALSE,Mixed return with order 04-2XZCPLU4LN,16 Mar - 22 Mar,Mar
+08-BE9CB99HBJ,Chun Lam,Edward,Received Damaged Item,UNSELINV,shoes,UGG-Classic-Mini-II-Boot-Chestnut-W,1016222-CHE,TRUE,FALSE,FALSE,02-AWMA3GX40S heavy scratch,16 Mar - 22 Mar,Mar
 ,,,,,,,,FALSE,FALSE,FALSE,,,
 ,,,,,,,,FALSE,FALSE,FALSE,,,
 ,,,,,,,,FALSE,FALSE,FALSE,,,
