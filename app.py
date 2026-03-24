@@ -89,7 +89,6 @@ def fetch_latest_data():
     if 'SKU' not in df_sop.columns: df_sop['SKU'] = 'Unknown'
     if 'Vertical' not in df_sop.columns: df_sop['Vertical'] = 'N/A'
     if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
-    # --- NEW: Brand Column ---
     if 'Brand' not in df_sop.columns: df_sop['Brand'] = 'Unknown'
 
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
@@ -132,7 +131,6 @@ def fetch_latest_data():
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE', 'Brand': 'Unknown'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     
-    # --- NEW: Create a unified Display Brand (uses SOP Brand if available, else IRR Category) ---
     df_combined['Display_Brand'] = df_combined.apply(lambda row: row['Category'] if row['Brand'] in ['Unknown', '', 'None', 'nan'] else row['Brand'], axis=1)
     
     return df_combined
@@ -142,13 +140,9 @@ df = fetch_latest_data()
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     st.session_state['last_logged_query'] = "" 
-    # Reset catalog dropdowns
     st.session_state['catalog_vertical'] = "All"
     st.session_state['catalog_brand'] = "All"
     st.session_state['catalog_item'] = "Select an item..."
-    if not df.empty:
-        st.session_state['source_filter'] = df['Record Source'].unique().tolist()
-        st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
 
 def get_sidebar_image(product_name):
     base_dir = "images"
@@ -161,7 +155,7 @@ def get_sidebar_image(product_name):
     return None
 
 # ----------------------------------------
-# 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
+# 2. SIDEBAR (ALERTS & LEADERBOARDS ONLY)
 # ----------------------------------------
 if not df.empty:
     st.sidebar.markdown("### 🚨 Recent Returns")
@@ -238,21 +232,12 @@ if not df.empty:
                         f"</div>"
                     )
                     st.markdown(compact_pass, unsafe_allow_html=True)
-            
-    st.sidebar.markdown("---")
-
-    st.sidebar.header("Filter Results")
-    selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
-    selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
-    
-    df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
 # ----------------------------------------
 # 3. MAIN INTERFACE: SEARCH VS CATALOG
 # ----------------------------------------
 st.markdown("### Navigation")
 
-# --- NEW: Mode Toggle ---
 nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog"], horizontal=True, label_visibility="collapsed")
 
 results = pd.DataFrame()
@@ -309,7 +294,6 @@ if nav_mode == "🔍 Direct Search":
                         results = df[df['Product Name'].isin(good_matches)]
 
 elif nav_mode == "🛍️ Browse Catalog":
-    # --- NEW: Shopping Catalog Feature ---
     st.caption("Filter by Vertical and Brand to explore historical records and verification standards.")
     
     if not df.empty:
@@ -319,14 +303,12 @@ elif nav_mode == "🛍️ Browse Catalog":
             vertical_options = ["All"] + sorted(df['Vertical'].dropna().unique().tolist())
             chosen_vertical = st.selectbox("1. Choose Vertical", vertical_options, key="catalog_vertical")
             
-        # Filter the dataset down based on Vertical
         cat_df = df if chosen_vertical == "All" else df[df['Vertical'] == chosen_vertical]
         
         with cat_col2:
             brand_options = ["All"] + sorted(cat_df['Display_Brand'].dropna().unique().tolist())
             chosen_brand = st.selectbox("2. Choose Brand / Category", brand_options, key="catalog_brand")
             
-        # Filter the dataset down based on Brand
         if chosen_brand != "All":
             cat_df = cat_df[cat_df['Display_Brand'] == chosen_brand]
             
@@ -337,7 +319,6 @@ elif nav_mode == "🛍️ Browse Catalog":
         if chosen_item != "Select an item...":
             results = cat_df[cat_df['Product Name'] == chosen_item]
             
-            # Log the catalog usage too!
             if st.session_state.get('last_logged_query') != f"Catalog: {chosen_item}":
                 log_usage_path = "total_usage_log.csv"
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
