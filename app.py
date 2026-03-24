@@ -5,7 +5,6 @@ import datetime
 import plotly.express as px
 import time
 
-# --- NEW: Try to load Fuzzy Matching ---
 try:
     from thefuzz import process
     FUZZY_ENABLED = True
@@ -82,7 +81,7 @@ def fetch_latest_data():
     try:
         df_sop = pd.read_csv('SOP_mapping.csv')
     except FileNotFoundError:
-        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date'])
+        df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date', 'Brand'])
 
     if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns: df_sop['SOP Link'] = 'None'
@@ -90,6 +89,8 @@ def fetch_latest_data():
     if 'SKU' not in df_sop.columns: df_sop['SKU'] = 'Unknown'
     if 'Vertical' not in df_sop.columns: df_sop['Vertical'] = 'N/A'
     if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
+    # --- NEW: Brand Column ---
+    if 'Brand' not in df_sop.columns: df_sop['Brand'] = 'Unknown'
 
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
     if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
@@ -113,7 +114,7 @@ def fetch_latest_data():
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date']], on='Product Name', how='left')
+    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date', 'Brand']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
@@ -128,8 +129,12 @@ def fetch_latest_data():
         ref_only_items['Exception'] = 'FALSE' 
         df_combined = pd.concat([df_combined, ref_only_items], ignore_index=True)
 
-    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE'}, inplace=True)
+    df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE', 'Brand': 'Unknown'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
+    
+    # --- NEW: Create a unified Display Brand (uses SOP Brand if available, else IRR Category) ---
+    df_combined['Display_Brand'] = df_combined.apply(lambda row: row['Category'] if row['Brand'] in ['Unknown', '', 'None', 'nan'] else row['Brand'], axis=1)
+    
     return df_combined
 
 df = fetch_latest_data()
@@ -137,6 +142,10 @@ df = fetch_latest_data()
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
     st.session_state['last_logged_query'] = "" 
+    # Reset catalog dropdowns
+    st.session_state['catalog_vertical'] = "All"
+    st.session_state['catalog_brand'] = "All"
+    st.session_state['catalog_item'] = "Select an item..."
     if not df.empty:
         st.session_state['source_filter'] = df['Record Source'].unique().tolist()
         st.session_state['vertical_filter'] = df['Vertical'].unique().tolist()
@@ -154,87 +163,84 @@ def get_sidebar_image(product_name):
 # ----------------------------------------
 # 2. SIDEBAR (ALERTS, LEADERBOARDS & FILTERS)
 # ----------------------------------------
-current_search = st.session_state.get('text_search_bar', '')
-
 if not df.empty:
-    if current_search == "":
-        st.sidebar.markdown("### 🚨 Recent Returns")
-        
-        strict_irr_data = df[
-            (df['Record Source'] == 'IRR (Returned)') & 
-            (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
-        ]
-        recent_returns = strict_irr_data.tail(3)[::-1]
-        
-        if not recent_returns.empty:
-            for _, row in recent_returns.iterrows():
-                with st.sidebar.container():
-                    col1, col2 = st.columns([1, 2.5])
-                    with col1:
-                        img = get_sidebar_image(row['Product Name'])
-                        if img:
-                            st.image(img, use_container_width=True)
-                    with col2:
-                        exception_status = str(row['Exception']).strip().upper()
-                        is_exception = (exception_status == 'TRUE')
-                        exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
-                        
-                        compact_text = (
-                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
-                            f"<b>{row['Product Name']}</b><br>"
-                            f"<span style='color: gray;'>SKU: {row['SKU']}</span><br>"
-                            f"{exception_badge}"
-                            f"<span style='color: #64b5f6;'>💬 {row['Notes']}</span>"
-                            f"</div>"
-                        )
-                        st.markdown(compact_text, unsafe_allow_html=True)
-        else:
-            st.sidebar.success("No recent returns found!")
-
-        st.sidebar.markdown("---")
-
-        st.sidebar.markdown("### 🏆 Frequent Items")
-        
-        irr_counts = df[df['Record Source'] == 'IRR (Returned)']['Product Name'].value_counts()
-        top_returns = irr_counts[irr_counts > 1].head(3)
-        
-        pass_counts = df[df['Record Source'] == 'Pass Order']['Product Name'].value_counts()
-        top_passes = pass_counts[pass_counts > 1].head(3)
-        
-        if not top_returns.empty:
-            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>❌ Top Returns</p>", unsafe_allow_html=True)
-            for item, count in top_returns.items():
-                with st.sidebar.container():
-                    col1, col2 = st.columns([1, 2.5])
-                    with col1:
-                        img = get_sidebar_image(item)
-                        if img: st.image(img, use_container_width=True)
-                    with col2:
-                        compact_ret = (
-                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
-                            f"<b>{count} Returns:</b><br>{item}"
-                            f"</div>"
-                        )
-                        st.markdown(compact_ret, unsafe_allow_html=True)
-                
-        if not top_passes.empty:
-            st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #4caf50; margin-top: 10px; margin-bottom: 5px;'>✅ Top Passes</p>", unsafe_allow_html=True)
-            for item, count in top_passes.items():
-                with st.sidebar.container():
-                    col1, col2 = st.columns([1, 2.5])
-                    with col1:
-                        img = get_sidebar_image(item)
-                        if img: st.image(img, use_container_width=True)
-                    with col2:
-                        compact_pass = (
-                            f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
-                            f"<b>{count} Passes:</b><br>{item}"
-                            f"</div>"
-                        )
-                        st.markdown(compact_pass, unsafe_allow_html=True)
-                
-        st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🚨 Recent Returns")
     
+    strict_irr_data = df[
+        (df['Record Source'] == 'IRR (Returned)') & 
+        (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
+    ]
+    recent_returns = strict_irr_data.tail(3)[::-1]
+    
+    if not recent_returns.empty:
+        for _, row in recent_returns.iterrows():
+            with st.sidebar.container():
+                col1, col2 = st.columns([1, 2.5])
+                with col1:
+                    img = get_sidebar_image(row['Product Name'])
+                    if img:
+                        st.image(img, use_container_width=True)
+                with col2:
+                    exception_status = str(row['Exception']).strip().upper()
+                    is_exception = (exception_status == 'TRUE')
+                    exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
+                    
+                    compact_text = (
+                        f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
+                        f"<b>{row['Product Name']}</b><br>"
+                        f"<span style='color: gray;'>SKU: {row['SKU']}</span><br>"
+                        f"{exception_badge}"
+                        f"<span style='color: #64b5f6;'>💬 {row['Notes']}</span>"
+                        f"</div>"
+                    )
+                    st.markdown(compact_text, unsafe_allow_html=True)
+    else:
+        st.sidebar.success("No recent returns found!")
+
+    st.sidebar.markdown("---")
+
+    st.sidebar.markdown("### 🏆 Frequent Items")
+    
+    irr_counts = df[df['Record Source'] == 'IRR (Returned)']['Product Name'].value_counts()
+    top_returns = irr_counts[irr_counts > 1].head(3)
+    
+    pass_counts = df[df['Record Source'] == 'Pass Order']['Product Name'].value_counts()
+    top_passes = pass_counts[pass_counts > 1].head(3)
+    
+    if not top_returns.empty:
+        st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #ff4b4b; margin-bottom: 5px;'>❌ Top Returns</p>", unsafe_allow_html=True)
+        for item, count in top_returns.items():
+            with st.sidebar.container():
+                col1, col2 = st.columns([1, 2.5])
+                with col1:
+                    img = get_sidebar_image(item)
+                    if img: st.image(img, use_container_width=True)
+                with col2:
+                    compact_ret = (
+                        f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
+                        f"<b>{count} Returns:</b><br>{item}"
+                        f"</div>"
+                    )
+                    st.markdown(compact_ret, unsafe_allow_html=True)
+            
+    if not top_passes.empty:
+        st.sidebar.markdown("<p style='font-size: 14px; font-weight: bold; color: #4caf50; margin-top: 10px; margin-bottom: 5px;'>✅ Top Passes</p>", unsafe_allow_html=True)
+        for item, count in top_passes.items():
+            with st.sidebar.container():
+                col1, col2 = st.columns([1, 2.5])
+                with col1:
+                    img = get_sidebar_image(item)
+                    if img: st.image(img, use_container_width=True)
+                with col2:
+                    compact_pass = (
+                        f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
+                        f"<b>{count} Passes:</b><br>{item}"
+                        f"</div>"
+                    )
+                    st.markdown(compact_pass, unsafe_allow_html=True)
+            
+    st.sidebar.markdown("---")
+
     st.sidebar.header("Filter Results")
     selected_source = st.sidebar.multiselect("Record Source", df['Record Source'].unique(), default=df['Record Source'].unique(), key="source_filter")
     selected_vertical = st.sidebar.multiselect("Vertical", df['Vertical'].unique(), default=df['Vertical'].unique(), key="vertical_filter")
@@ -242,66 +248,104 @@ if not df.empty:
     df = df[df['Record Source'].isin(selected_source) & df['Vertical'].isin(selected_vertical)]
 
 # ----------------------------------------
-# 3. MAIN SEARCH INTERFACE & LOGGING
+# 3. MAIN INTERFACE: SEARCH VS CATALOG
 # ----------------------------------------
-st.markdown("### Search Database")
+st.markdown("### Navigation")
 
-col_search, col_submit, col_reset = st.columns([6, 1, 1])
-
-with col_search:
-    search_query = st.text_input("🔍 Type Name, Order #, or SKU (e.g., 'DH2920' or 'joker'):", key="text_search_bar")
-
-with col_submit:
-    st.write("") 
-    st.write("") 
-    st.button("🔍 Search", use_container_width=True)
-
-with col_reset:
-    st.write("") 
-    st.write("") 
-    st.button("🔄 Reset Home", on_click=reset_to_home, use_container_width=True)
+# --- NEW: Mode Toggle ---
+nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog"], horizontal=True, label_visibility="collapsed")
 
 results = pd.DataFrame()
+search_query = ""
 
-if search_query:
-    if len(search_query) < 3:
-        st.warning("⚠️ Please type at least 3 characters to start searching.")
-    else:
-        if st.session_state.get('last_logged_query') != search_query:
-            log_usage_path = "total_usage_log.csv"
-            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            usage_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
-            
-            if os.path.exists(log_usage_path): usage_df.to_csv(log_usage_path, mode='a', header=False, index=False)
-            else: usage_df.to_csv(log_usage_path, index=False)
-            
-            st.session_state['last_logged_query'] = search_query
+if nav_mode == "🔍 Direct Search":
+    col_search, col_submit, col_reset = st.columns([6, 1, 1])
+    
+    with col_search:
+        search_query = st.text_input("🔍 Type Name, Order #, or SKU (e.g., 'DH2920' or 'joker'):", key="text_search_bar")
+    
+    with col_submit:
+        st.write("") 
+        st.write("") 
+        search_pressed = st.button("🔍 Search", use_container_width=True)
+    
+    with col_reset:
+        st.write("") 
+        st.write("") 
+        st.button("🔄 Reset Home", on_click=reset_to_home, use_container_width=True)
 
-        if not df.empty:
-            query_dashed = search_query.lower().replace(" ", "-")
-            query_spaced = search_query.lower()
+    if search_query:
+        if len(search_query) < 3:
+            st.warning("⚠️ Please type at least 3 characters to start searching.")
+        else:
+            if st.session_state.get('last_logged_query') != search_query:
+                log_usage_path = "total_usage_log.csv"
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                usage_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": search_query}])
+                
+                if os.path.exists(log_usage_path): usage_df.to_csv(log_usage_path, mode='a', header=False, index=False)
+                else: usage_df.to_csv(log_usage_path, index=False)
+                
+                st.session_state['last_logged_query'] = search_query
 
-            # 1. Try Exact/Substring Match First
-            results = df[
-                df['Product Name'].str.lower().str.contains(query_dashed, na=False) |
-                df['Product Name'].str.lower().str.contains(query_spaced, na=False) |
-                df['Order Number'].str.lower().str.contains(query_spaced, na=False) |
-                df['SKU'].str.lower().str.contains(query_spaced, na=False)
-            ]
+            if not df.empty:
+                query_dashed = search_query.lower().replace(" ", "-")
+                query_spaced = search_query.lower()
+
+                results = df[
+                    df['Product Name'].str.lower().str.contains(query_dashed, na=False) |
+                    df['Product Name'].str.lower().str.contains(query_spaced, na=False) |
+                    df['Order Number'].str.lower().str.contains(query_spaced, na=False) |
+                    df['SKU'].str.lower().str.contains(query_spaced, na=False)
+                ]
+                
+                if results.empty and FUZZY_ENABLED:
+                    unique_products = df['Product Name'].dropna().unique().tolist()
+                    fuzzy_matches = process.extract(search_query, unique_products, limit=3)
+                    good_matches = [m[0] for m in fuzzy_matches if m[1] >= 70]
+                    
+                    if good_matches:
+                        st.info(f"💡 No exact match found. Showing closest matches for: **{', '.join(good_matches)}**")
+                        results = df[df['Product Name'].isin(good_matches)]
+
+elif nav_mode == "🛍️ Browse Catalog":
+    # --- NEW: Shopping Catalog Feature ---
+    st.caption("Filter by Vertical and Brand to explore historical records and verification standards.")
+    
+    if not df.empty:
+        cat_col1, cat_col2, cat_col3 = st.columns(3)
+        
+        with cat_col1:
+            vertical_options = ["All"] + sorted(df['Vertical'].dropna().unique().tolist())
+            chosen_vertical = st.selectbox("1. Choose Vertical", vertical_options, key="catalog_vertical")
             
-            # --- NEW: 2. Try Fuzzy Match if Exact Fails ---
-            if results.empty and FUZZY_ENABLED:
-                unique_products = df['Product Name'].dropna().unique().tolist()
+        # Filter the dataset down based on Vertical
+        cat_df = df if chosen_vertical == "All" else df[df['Vertical'] == chosen_vertical]
+        
+        with cat_col2:
+            brand_options = ["All"] + sorted(cat_df['Display_Brand'].dropna().unique().tolist())
+            chosen_brand = st.selectbox("2. Choose Brand / Category", brand_options, key="catalog_brand")
+            
+        # Filter the dataset down based on Brand
+        if chosen_brand != "All":
+            cat_df = cat_df[cat_df['Display_Brand'] == chosen_brand]
+            
+        with cat_col3:
+            item_options = ["Select an item..."] + sorted(cat_df['Product Name'].dropna().unique().tolist())
+            chosen_item = st.selectbox("3. Choose Specific Item", item_options, key="catalog_item")
+            
+        if chosen_item != "Select an item...":
+            results = cat_df[cat_df['Product Name'] == chosen_item]
+            
+            # Log the catalog usage too!
+            if st.session_state.get('last_logged_query') != f"Catalog: {chosen_item}":
+                log_usage_path = "total_usage_log.csv"
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                usage_df = pd.DataFrame([{"Timestamp": timestamp, "Search Query": f"Catalog: {chosen_item}"}])
                 
-                # Looks for the top 3 items that sound/spell similar
-                fuzzy_matches = process.extract(search_query, unique_products, limit=3)
-                
-                # Only accepts it if it's a 70% match or better (avoids pulling total junk)
-                good_matches = [m[0] for m in fuzzy_matches if m[1] >= 70]
-                
-                if good_matches:
-                    st.info(f"💡 No exact match found. Showing closest matches for: **{', '.join(good_matches)}**")
-                    results = df[df['Product Name'].isin(good_matches)]
+                if os.path.exists(log_usage_path): usage_df.to_csv(log_usage_path, mode='a', header=False, index=False)
+                else: usage_df.to_csv(log_usage_path, index=False)
+                st.session_state['last_logged_query'] = f"Catalog: {chosen_item}"
 
 # ----------------------------------------
 # 4. DISPLAY RESULTS
@@ -429,7 +473,7 @@ if not results.empty:
                 st.info("No detailed inspector notes left for these orders.")
         
         st.write("")
-        cols_to_drop = [col for col in ['SOP Link', 'Description', 'Note Date'] if col in results.columns]
+        cols_to_drop = [col for col in ['SOP Link', 'Description', 'Note Date', 'Brand', 'Display_Brand'] if col in results.columns]
         download_df = results.drop(columns=cols_to_drop)
         csv = download_df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -464,7 +508,7 @@ if not results.empty:
                 st.info("📂 **Feature Setup Required**")
                 st.write(f"To use this feature, create a new folder named `detail_images` on your GitHub. Upload your extra photos there and name them like `{product_name}_1.jpg`!")
 
-elif search_query and len(search_query) >= 3:
+elif nav_mode == "🔍 Direct Search" and search_query and len(search_query) >= 3:
     st.warning("No records found. Try clearing your filters or using fewer keywords.")
     
     log_file_path = "missed_searches.csv"
