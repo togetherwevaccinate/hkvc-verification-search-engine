@@ -83,6 +83,7 @@ def fetch_latest_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date', 'Brand'])
 
+    # Safeties for SOP Mapping
     if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns: df_sop['SOP Link'] = 'None'
     if 'Description' not in df_sop.columns: df_sop['Description'] = 'None'
@@ -91,29 +92,39 @@ def fetch_latest_data():
     if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
     if 'Brand' not in df_sop.columns: df_sop['Brand'] = 'Unknown'
 
+    # Safeties for Live Reports
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
     if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
-    
     if 'Exception' not in df_irr.columns: df_irr['Exception'] = 'FALSE'
     if 'Exception' not in df_pass.columns: df_pass['Exception'] = 'FALSE'
+    if 'Brand' not in df_irr.columns: df_irr['Brand'] = 'Unknown'
+    if 'brand' not in df_pass.columns: df_pass['brand'] = 'Unknown'
+    if 'Vertical' not in df_irr.columns: df_irr['Vertical'] = 'N/A'
+    if 'vertical' not in df_pass.columns: df_pass['vertical'] = 'N/A'
+    if 'Category' not in df_irr.columns: df_irr['Category'] = 'N/A'
+    if 'Category' not in df_pass.columns: df_pass['Category'] = 'N/A'
 
     df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
     
-    df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Item', 'Comment', 'SKU', 'Exception']].copy()
+    # --- UPDATED: PULLING BRAND AND VERTICAL DIRECTLY FROM IRR ---
+    df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Brand', 'Item', 'Comment', 'SKU', 'Exception']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
     df_irr_clean['Product Name'] = df_irr_clean['Product Name'].astype(str).str.strip()
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
-    df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'name', 'trouble_notes', 'SKU', 'Exception']].copy()
-    df_pass_clean.rename(columns={'order_id': 'Order Number', 'trouble_reason': 'Return Reason', 'vertical': 'Vertical', 'name': 'Product Name', 'trouble_notes': 'Notes'}, inplace=True)
+    # --- UPDATED: PULLING BRAND AND VERTICAL DIRECTLY FROM PASS REPORT ---
+    df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'brand', 'name', 'trouble_notes', 'SKU', 'Exception']].copy()
+    df_pass_clean.rename(columns={'order_id': 'Order Number', 'trouble_reason': 'Return Reason', 'vertical': 'Vertical', 'brand': 'Brand', 'name': 'Product Name', 'trouble_notes': 'Notes'}, inplace=True)
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
+    # Combine the files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date', 'Brand']], on='Product Name', how='left')
+    # Merge ONLY the notes and links from the SOP sheet now (Vertical and Brand are handled by your live data!)
+    df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
     ref_only_items = df_sop[~df_sop['Product Name'].isin(existing_products)].copy()
@@ -131,7 +142,15 @@ def fetch_latest_data():
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE', 'Brand': 'Unknown'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     
-    df_combined['Display_Brand'] = df_combined.apply(lambda row: row['Category'] if row['Brand'] in ['Unknown', '', 'None', 'nan'] else row['Brand'], axis=1)
+    # --- UI MAGIC: Automatically capitalize the Brands and Verticals for a clean Dropdown menu ---
+    df_combined['Display_Brand'] = df_combined.apply(
+        lambda row: row['Category'] if pd.isna(row['Brand']) or str(row['Brand']).strip().lower() in ['unknown', 'nan', '', 'none'] else str(row['Brand']).strip().title(), 
+        axis=1
+    )
+    
+    df_combined['Vertical'] = df_combined['Vertical'].apply(
+        lambda x: str(x).strip().title() if pd.notna(x) and str(x).strip().lower() not in ['nan', 'none', ''] else 'N/A'
+    )
     
     return df_combined
 
