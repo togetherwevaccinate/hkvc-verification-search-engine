@@ -4,6 +4,8 @@ import os
 import datetime
 import plotly.express as px
 import time
+import urllib.parse
+import requests
 
 try:
     from thefuzz import process
@@ -15,42 +17,71 @@ except ImportError:
 st.set_page_config(page_title="Verification Returns & Pass Records", layout="wide")
 
 # ----------------------------------------
-# 🔒 SECURITY: TARPIT & SECRETS LOGIN
+# 🔒 SECURITY: GOOGLE SSO (STOCKX EMAILS ONLY)
 # ----------------------------------------
 def check_password():
-    if st.session_state.get("password_correct", False):
+    # If they already logged in successfully during this session
+    if st.session_state.get("email_verified", False):
+        st.sidebar.caption(f"👤 Logged in as: {st.session_state.get('user_email')}")
         return True
 
-    if "login_attempts" not in st.session_state:
-        st.session_state["login_attempts"] = 0
-
     st.markdown("## 🔒 Restricted Access")
-    st.write("Please enter the team password to access the Verification Search Engine.")
-    
-    if st.session_state["login_attempts"] >= 5:
-        st.error("🚫 Maximum login attempts exceeded for this session. Please refresh the page to try again.")
-        return False
-        
-    with st.form("Login_Form"):
-        password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Log In")
-        
-        if submit:
-            try:
-                correct_password = st.secrets["password"]
-            except Exception:
-                st.error("⚠️ App Secret not configured properly. Please add 'password' to Streamlit Secrets.")
-                return False
+    st.write("This application is highly restricted. Please log in with your corporate email to access the Verification Search Engine.")
 
-            if password == correct_password:
-                st.session_state["password_correct"] = True
-                st.session_state["login_attempts"] = 0 
-                st.rerun()
-            else:
-                time.sleep(3) 
-                st.session_state["login_attempts"] += 1
-                attempts_left = 5 - st.session_state["login_attempts"]
-                st.error(f"❌ Incorrect password. You have {attempts_left} attempts remaining.")
+    try:
+        client_id = st.secrets["client_id"]
+        client_secret = st.secrets["client_secret"]
+        redirect_uri = st.secrets["redirect_uri"]
+    except Exception:
+        st.error("⚠️ App Secrets not configured. Please add client_id, client_secret, and redirect_uri to Streamlit Secrets.")
+        return False
+
+    # 1. Check if Google just redirected the user back with an approval "code"
+    query_params = st.query_params
+    if "code" in query_params:
+        code = query_params["code"]
+        
+        # Exchange that code for a secure token
+        token_url = "https://oauth2.googleapis.com/token"
+        data = {
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+        res = requests.post(token_url, data=data)
+        
+        if res.status_code == 200:
+            access_token = res.json().get("access_token")
+            
+            # Ask Google for the user's email address
+            user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+            user_res = requests.get(user_info_url, headers={"Authorization": f"Bearer {access_token}"})
+            
+            if user_res.status_code == 200:
+                email = user_res.json().get("email", "")
+                
+                # --- THE BOUNCER: DOMAIN CHECK ---
+                if email.endswith("@stockx.com"):
+                    st.session_state["email_verified"] = True
+                    st.session_state["user_email"] = email
+                    st.query_params.clear() # Clean the URL
+                    st.rerun()
+                else:
+                    st.error(f"🚫 Unauthorized Domain: {email}. You must use an official @stockx.com email.")
+                    st.query_params.clear()
+                    return False
+        else:
+            st.error("❌ Failed to authenticate with Google. Please try again.")
+            st.query_params.clear()
+            return False
+
+    # 2. If they haven't logged in yet, show the Login Button
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code&scope=openid%20email&redirect_uri={urllib.parse.quote(redirect_uri)}"
+    
+    st.write("")
+    st.link_button("🌐 Sign in with Google", auth_url, type="primary")
     return False
 
 if not check_password():
@@ -83,7 +114,6 @@ def fetch_latest_data():
     except FileNotFoundError:
         df_sop = pd.DataFrame(columns=['Product Name', 'SOP Link', 'Description', 'SKU', 'Vertical', 'Note Date', 'Brand'])
 
-    # Safeties for SOP Mapping
     if 'Product Name' not in df_sop.columns: df_sop['Product Name'] = 'Unknown'
     if 'SOP Link' not in df_sop.columns: df_sop['SOP Link'] = 'None'
     if 'Description' not in df_sop.columns: df_sop['Description'] = 'None'
@@ -92,7 +122,6 @@ def fetch_latest_data():
     if 'Note Date' not in df_sop.columns: df_sop['Note Date'] = ''
     if 'Brand' not in df_sop.columns: df_sop['Brand'] = 'Unknown'
 
-    # Safeties for Live Reports
     if 'SKU' not in df_irr.columns: df_irr['SKU'] = 'Unknown'
     if 'SKU' not in df_pass.columns: df_pass['SKU'] = 'Unknown'
     if 'Exception' not in df_irr.columns: df_irr['Exception'] = 'FALSE'
@@ -106,24 +135,20 @@ def fetch_latest_data():
 
     df_sop['Product Name'] = df_sop['Product Name'].astype(str).str.strip()
     
-    # --- UPDATED: PULLING BRAND AND VERTICAL DIRECTLY FROM IRR ---
     df_irr_clean = df_irr[['Order Number', 'Return Reason', 'Category', 'Vertical', 'Brand', 'Item', 'Comment', 'SKU', 'Exception']].copy()
     df_irr_clean.rename(columns={'Item': 'Product Name', 'Comment': 'Notes'}, inplace=True)
     df_irr_clean['Product Name'] = df_irr_clean['Product Name'].astype(str).str.strip()
     df_irr_clean['Record Source'] = 'IRR (Returned)'
 
-    # --- UPDATED: PULLING BRAND AND VERTICAL DIRECTLY FROM PASS REPORT ---
     df_pass_clean = df_pass[['order_id', 'trouble_reason', 'Category', 'vertical', 'brand', 'name', 'trouble_notes', 'SKU', 'Exception']].copy()
     df_pass_clean.rename(columns={'order_id': 'Order Number', 'trouble_reason': 'Return Reason', 'vertical': 'Vertical', 'brand': 'Brand', 'name': 'Product Name', 'trouble_notes': 'Notes'}, inplace=True)
     df_pass_clean['Product Name'] = df_pass_clean['Product Name'].astype(str).str.strip()
     df_pass_clean['Record Source'] = 'Pass Order'
 
-    # Combine the files
     df_combined = pd.concat([df_irr_clean, df_pass_clean], ignore_index=True)
     df_combined.dropna(subset=['Product Name', 'Order Number'], inplace=True)
     df_combined = df_combined[~df_combined['Product Name'].str.lower().isin(['nan', 'none', 'null', ''])]
 
-    # Merge ONLY the notes and links from the SOP sheet now (Vertical and Brand are handled by your live data!)
     df_combined = pd.merge(df_combined, df_sop[['Product Name', 'SOP Link', 'Description', 'Note Date']], on='Product Name', how='left')
     
     existing_products = df_combined['Product Name'].unique()
@@ -142,7 +167,6 @@ def fetch_latest_data():
     df_combined.fillna({'Notes': 'None', 'Category': 'N/A', 'Vertical': 'N/A', 'SKU': 'Unknown', 'Return Reason': 'None', 'SOP Link': 'None', 'Description': 'None', 'Note Date': '', 'Exception': 'FALSE', 'Brand': 'Unknown'}, inplace=True)
     df_combined['SKU'] = df_combined['SKU'].astype(str).str.strip()
     
-    # --- UI MAGIC: Automatically capitalize the Brands and Verticals for a clean Dropdown menu ---
     df_combined['Display_Brand'] = df_combined.apply(
         lambda row: row['Category'] if pd.isna(row['Brand']) or str(row['Brand']).strip().lower() in ['unknown', 'nan', '', 'none'] else str(row['Brand']).strip().title(), 
         axis=1
