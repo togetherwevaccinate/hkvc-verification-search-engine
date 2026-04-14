@@ -20,7 +20,6 @@ st.set_page_config(page_title="Verification Returns & Pass Records", layout="wid
 # 🔒 SECURITY: GOOGLE SSO (STOCKX EMAILS ONLY)
 # ----------------------------------------
 def check_password():
-    # If they already logged in successfully during this session
     if st.session_state.get("email_verified", False):
         st.sidebar.caption(f"👤 Logged in as: {st.session_state.get('user_email')}")
         return True
@@ -36,12 +35,10 @@ def check_password():
         st.error("⚠️ App Secrets not configured. Please add client_id, client_secret, and redirect_uri to Streamlit Secrets.")
         return False
 
-    # 1. Check if Google just redirected the user back with an approval "code"
     query_params = st.query_params
     if "code" in query_params:
         code = query_params["code"]
         
-        # Exchange that code for a secure token
         token_url = "https://oauth2.googleapis.com/token"
         data = {
             "code": code,
@@ -55,18 +52,16 @@ def check_password():
         if res.status_code == 200:
             access_token = res.json().get("access_token")
             
-            # Ask Google for the user's email address
             user_info_url = "https://www.googleapis.com/oauth2/v2/userinfo"
             user_res = requests.get(user_info_url, headers={"Authorization": f"Bearer {access_token}"})
             
             if user_res.status_code == 200:
                 email = user_res.json().get("email", "")
                 
-                # --- THE BOUNCER: DOMAIN CHECK ---
                 if email.endswith("@stockx.com"):
                     st.session_state["email_verified"] = True
                     st.session_state["user_email"] = email
-                    st.query_params.clear() # Clean the URL
+                    st.query_params.clear() 
                     st.rerun()
                 else:
                     st.error(f"🚫 Unauthorized Domain: {email}. You must use an official @stockx.com email.")
@@ -77,7 +72,6 @@ def check_password():
             st.query_params.clear()
             return False
 
-    # 2. If they haven't logged in yet, show the Login Button
     auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={client_id}&response_type=code&scope=openid%20email&redirect_uri={urllib.parse.quote(redirect_uri)}"
     
     st.write("")
@@ -277,11 +271,12 @@ if not df.empty:
                     st.markdown(compact_pass, unsafe_allow_html=True)
 
 # ----------------------------------------
-# 3. MAIN INTERFACE: SEARCH VS CATALOG
+# 3. MAIN INTERFACE: NAVIGATION
 # ----------------------------------------
 st.markdown("### Navigation")
 
-nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog"], horizontal=True, label_visibility="collapsed")
+# --- NEW: Added the 3rd SOP Updates option ---
+nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog", "📢 Recent SOP Updates"], horizontal=True, label_visibility="collapsed")
 
 results = pd.DataFrame()
 search_query = ""
@@ -370,6 +365,68 @@ elif nav_mode == "🛍️ Browse Catalog":
                 if os.path.exists(log_usage_path): usage_df.to_csv(log_usage_path, mode='a', header=False, index=False)
                 else: usage_df.to_csv(log_usage_path, index=False)
                 st.session_state['last_logged_query'] = f"Catalog: {chosen_item}"
+
+# --- NEW: SOP Updates Feed Feature ---
+elif nav_mode == "📢 Recent SOP Updates":
+    st.markdown("---")
+    st.markdown("### 📢 Top 10 Latest SOP Updates")
+    st.caption("The most recently added or modified verification standards straight from the Master Mapping Document.")
+    
+    if not df.empty:
+        # Strip out completely blank dates
+        valid_dates = df[~df['Note Date'].isin(['', 'None', 'nan', None])].copy()
+        
+        if not valid_dates.empty:
+            # We only want one entry per product, not 5 entries if a shoe was returned 5 times
+            sop_items = valid_dates.drop_duplicates(subset=['Product Name']).copy()
+            
+            # This mathematically converts your dates into code, so it knows March comes after February
+            sop_items['Real Date'] = pd.to_datetime(sop_items['Note Date'], errors='coerce')
+            sop_items = sop_items.dropna(subset=['Real Date'])
+            
+            # Sort newest first and grab the top 10
+            top_10_sop = sop_items.sort_values(by='Real Date', ascending=False).head(10)
+            
+            if not top_10_sop.empty:
+                for _, row in top_10_sop.iterrows():
+                    with st.container():
+                        st.markdown(f"#### {row['Product Name']}")
+                        
+                        col1, col2 = st.columns([1, 4])
+                        with col1:
+                            img_path = get_sidebar_image(row['Product Name'])
+                            if img_path:
+                                st.image(img_path, width=150)
+                            else:
+                                st.caption("🖼️ No Image")
+                        
+                        with col2:
+                            st.caption(f"📅 **Updated:** {row['Note Date']} | 🏢 **Vertical:** {row['Vertical']} | 🔢 **SKU:** {row['SKU']}")
+                            
+                            # Format description nicely
+                            desc_text = str(row['Description']).replace("\\n", "\n")
+                            if "\n" in desc_text:
+                                lines = [line.strip() for line in desc_text.split("\n") if line.strip()]
+                            else:
+                                lines = [line.strip() + "." for line in desc_text.split(". ") if line.strip()]
+                                lines = [line.replace("..", ".") for line in lines]
+                                
+                            formatted_desc = "\n".join([f"👉 **{line}**" for line in lines])
+                            st.info(formatted_desc)
+                            
+                            # Provide standard SOP buttons
+                            if row['SOP Link'] != 'None' and pd.notna(row['SOP Link']):
+                                sop_links = [link.strip() for link in str(row['SOP Link']).split(',')]
+                                for i, link in enumerate(sop_links):
+                                    if link:
+                                        btn_name = "📘 Open Internal SOP" if len(sop_links) == 1 else f"📘 Open Internal SOP (Part {i+1})"
+                                        st.link_button(btn_name, link)
+                    st.markdown("---")
+            else:
+                st.info("⚠️ Could not read the date format. Please make sure dates in SOP_mapping.csv are standard formats like MM/DD/YYYY or YYYY-MM-DD.")
+        else:
+            st.info("No SOP updates found yet. Add dates to the 'Note Date' column in your SOP_mapping.csv file to see them here!")
+
 
 # ----------------------------------------
 # 4. DISPLAY RESULTS
