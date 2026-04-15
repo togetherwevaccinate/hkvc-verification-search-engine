@@ -3,6 +3,7 @@ import streamlit as st
 import os
 import datetime
 import plotly.express as px
+import plotly.graph_objects as go
 import time
 import urllib.parse
 import requests
@@ -275,7 +276,6 @@ if not df.empty:
 # ----------------------------------------
 st.markdown("### Navigation")
 
-# --- NEW: Added the 3rd SOP Updates option ---
 nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog", "📢 Recent SOP Updates"], horizontal=True, label_visibility="collapsed")
 
 results = pd.DataFrame()
@@ -366,25 +366,20 @@ elif nav_mode == "🛍️ Browse Catalog":
                 else: usage_df.to_csv(log_usage_path, index=False)
                 st.session_state['last_logged_query'] = f"Catalog: {chosen_item}"
 
-# --- NEW: SOP Updates Feed Feature ---
 elif nav_mode == "📢 Recent SOP Updates":
     st.markdown("---")
     st.markdown("### 📢 Top 10 Latest SOP Updates")
     st.caption("The most recently added or modified verification standards straight from the Master Mapping Document.")
     
     if not df.empty:
-        # Strip out completely blank dates
         valid_dates = df[~df['Note Date'].isin(['', 'None', 'nan', None])].copy()
         
         if not valid_dates.empty:
-            # We only want one entry per product, not 5 entries if a shoe was returned 5 times
             sop_items = valid_dates.drop_duplicates(subset=['Product Name']).copy()
             
-            # This mathematically converts your dates into code, so it knows March comes after February
             sop_items['Real Date'] = pd.to_datetime(sop_items['Note Date'], errors='coerce')
             sop_items = sop_items.dropna(subset=['Real Date'])
             
-            # Sort newest first and grab the top 10
             top_10_sop = sop_items.sort_values(by='Real Date', ascending=False).head(10)
             
             if not top_10_sop.empty:
@@ -403,7 +398,6 @@ elif nav_mode == "📢 Recent SOP Updates":
                         with col2:
                             st.caption(f"📅 **Updated:** {row['Note Date']} | 🏢 **Vertical:** {row['Vertical']} | 🔢 **SKU:** {row['SKU']}")
                             
-                            # Format description nicely
                             desc_text = str(row['Description']).replace("\\n", "\n")
                             if "\n" in desc_text:
                                 lines = [line.strip() for line in desc_text.split("\n") if line.strip()]
@@ -414,7 +408,6 @@ elif nav_mode == "📢 Recent SOP Updates":
                             formatted_desc = "\n".join([f"👉 **{line}**" for line in lines])
                             st.info(formatted_desc)
                             
-                            # Provide standard SOP buttons
                             if row['SOP Link'] != 'None' and pd.notna(row['SOP Link']):
                                 sop_links = [link.strip() for link in str(row['SOP Link']).split(',')]
                                 for i, link in enumerate(sop_links):
@@ -634,7 +627,8 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
     if admin_password == correct_admin_pw and correct_admin_pw is not None:
         st.success("🔓 Admin access granted.")
         
-        admin_tab1, admin_tab2 = st.tabs(["📈 Total Usage Log", "❌ Missed Searches Log"])
+        # --- NEW: Added 3rd Tab for Slack Graphic Generation ---
+        admin_tab1, admin_tab2, admin_tab3 = st.tabs(["📈 Total Usage Log", "❌ Missed Searches Log", "📣 Slack Announcement Generator"])
         
         with admin_tab1:
             st.markdown("**Total Search Volume**")
@@ -671,6 +665,76 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
                 )
             else:
                 st.info("No missed searches logged yet!")
+                
+        # --- NEW: Admin Graphic Generator ---
+        with admin_tab3:
+            st.markdown("**Generate Slack Alert Graphic**")
+            st.caption("Click the button below to generate a downloadable warning graphic for the team.")
+
+            if st.button("🎨 Generate Recent Returns Graphic", use_container_width=True):
+                if not df.empty:
+                    strict_irr_data = df[
+                        (df['Record Source'] == 'IRR (Returned)') &
+                        (~df['Return Reason'].isin(['None', 'N/A', '', 'NaN']))
+                    ]
+                    latest_returns = strict_irr_data.tail(3)[::-1]
+
+                    if not latest_returns.empty:
+                        # Draw the custom image poster using Plotly!
+                        fig = go.Figure()
+
+                        fig.add_annotation(
+                            x=0.5, y=0.95, text="🚨 HIGH-RISK WARNING 🚨",
+                            showarrow=False, font=dict(size=36, color="#ff4b4b", family="Arial Black")
+                        )
+                        fig.add_annotation(
+                            x=0.5, y=0.85, text="Recent Returns to watch out for today:",
+                            showarrow=False, font=dict(size=20, color="#94a3b8")
+                        )
+
+                        y_pos = 0.65
+                        for _, row in latest_returns.iterrows():
+                            # Keep names from wrapping too badly
+                            item_name = str(row['Product Name'])
+                            if len(item_name) > 50: item_name = item_name[:47] + "..."
+
+                            is_exception = str(row['Exception']).strip().upper() == 'TRUE'
+                            exc_text = " (🛡️ EXCEPTION)" if is_exception else ""
+
+                            text_line = (
+                                f"<b>{item_name}</b><br>"
+                                f"<span style='font-size: 14px; color: #cbd5e1;'>SKU: {row['SKU']}</span><br>"
+                                f"<span style='font-size: 16px; color: #ffb86c;'><b>Defect:</b> {row['Return Reason']}{exc_text}</span>"
+                            )
+
+                            fig.add_annotation(
+                                x=0.5, y=y_pos, text=text_line,
+                                showarrow=False, font=dict(size=18, color="white"),
+                                bgcolor="rgba(255, 75, 75, 0.15)", bordercolor="#ff4b4b",
+                                borderwidth=2, borderpad=15, width=600
+                            )
+                            y_pos -= 0.25
+
+                        fig.update_layout(
+                            xaxis=dict(visible=False, range=[0, 1]),
+                            yaxis=dict(visible=False, range=[0, 1]),
+                            paper_bgcolor="#16181d",
+                            plot_bgcolor="#16181d",
+                            width=800,
+                            height=650,
+                            margin=dict(l=20, r=20, t=40, b=20)
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                        st.info("💡 **How to use:** Hover over the top right corner of the picture above and click the **camera icon** (Download plot as a png). You can then drop that directly into Slack!")
+
+                        st.markdown("**Copy & Paste this message with your picture:**")
+                        st.code("@here 🚨 Watch out team! Here are the most recent returns hitting our warehouse. Please check these specific defects carefully if you see them today. Use the Verification Search Engine for full SOP details!", language="text")
+
+                    else:
+                        st.success("No recent returns to report!")
+                else:
+                    st.warning("Data is currently empty.")
     elif admin_password != "":
         time.sleep(2)
         st.error("❌ Incorrect Admin Password.")
