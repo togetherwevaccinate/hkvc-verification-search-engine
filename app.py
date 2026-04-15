@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import time
 import urllib.parse
 import requests
-import base64 # Standard Python library for encoding images into HTML
+import base64 
 
 try:
     from thefuzz import process
@@ -682,194 +682,186 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
                         today_str = datetime.datetime.now().strftime("%Y/%m/%d")
                         
                         # --- START HTML GENERATION ---
-                        # CSS for that exact format
+                        # NOTE: No leading spaces here so Streamlit parses it as HTML, not a code block!
                         html_code = """
-                        <style>
-                            .irr-graphic-container {
-                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                                background-color: white;
-                                color: black;
-                                padding: 30px;
-                                border-radius: 12px;
-                                max-width: 900px;
-                                margin: 20px auto;
-                                border: 1px solid #e2e8f0;
-                            }
-                            .irr-header {
-                                border-bottom: 2px solid #e2e8f0;
-                                padding-bottom: 15px;
-                                margin-bottom: 25px;
-                            }
-                            .irr-title {
-                                font-size: 32px;
-                                font-weight: 800;
-                                margin: 0;
-                                color: #1a202c;
-                            }
-                            .irr-subtitle {
-                                font-size: 16px;
-                                color: #718096;
-                                margin: 5px 0 0 0;
-                            }
-                            .irr-row {
-                                display: flex;
-                                align-items: start;
-                                gap: 25px;
-                                padding: 20px 0;
-                                border-bottom: 1px solid #edf2f7;
-                            }
-                            .irr-row:last-child {
-                                border-bottom: none;
-                            }
-                            .irr-img-container {
-                                width: 150px;
-                                flex-shrink: 0;
-                                text-align: center;
-                            }
-                            .irr-img-container img {
-                                width: 150px;
-                                height: auto;
-                                object-fit: contain;
-                                border-radius: 8px;
-                            }
-                            .irr-details {
-                                flex-grow: 1;
-                            }
-                            .irr-tag-container {
-                                display: flex;
-                                gap: 10px;
-                                margin-bottom: 10px;
-                            }
-                            .irr-tag {
-                                font-size: 11px;
-                                font-weight: 700;
-                                text-transform: uppercase;
-                                padding: 4px 10px;
-                                border-radius: 15px;
-                                letter-spacing: 0.5px;
-                            }
-                            .irr-tag-red {
-                                background-color: #fff5f5;
-                                color: #c53030;
-                                border: 1px solid #feb2b2;
-                            }
-                            .irr-tag-green {
-                                background-color: #f0fff4;
-                                color: #2f855a;
-                                border: 1px solid #9ae6b4;
-                            }
-                            .irr-name {
-                                font-size: 18px;
-                                font-weight: 700;
-                                color: #1a202c;
-                                margin: 0 0 15px 0;
-                                line-height: 1.3;
-                            }
-                            .irr-note-block {
-                                background-color: #f7fafc;
-                                border-left: 4px solid #cbd5e1;
-                                padding: 10px 15px;
-                                margin-bottom: 10px;
-                            }
-                            .irr-note-label {
-                                font-weight: 600;
-                                color: #4a5568;
-                                font-size: 14px;
-                            }
-                            .irr-note-text {
-                                color: #1a202c;
-                                font-size: 14px;
-                                margin-top: 3px;
-                            }
-                            .irr-reason-block {
-                                display: flex;
-                                gap: 8px;
-                                align-items: center;
-                                color: #c53030;
-                                font-weight: 600;
-                                font-size: 14px;
-                            }
-                            .irr-actions {
-                                width: 140px;
-                                flex-shrink: 0;
-                                display: flex;
-                                flex-direction: column;
-                                gap: 8px;
-                                padding-top: 5px;
-                            }
-                            .irr-btn {
-                                font-size: 12px;
-                                font-weight: 600;
-                                text-align: center;
-                                padding: 8px;
-                                border-radius: 6px;
-                                text-decoration: none;
-                                border: 1px solid #e2e8f0;
-                            }
-                            .irr-btn-white {
-                                background-color: white;
-                                color: #1a202c;
-                            }
-                            .irr-btn-blue {
-                                background-color: #3182ce;
-                                color: white;
-                                border-color: #3182ce;
-                            }
-                        </style>
-                        """
-                        
-                        html_code += f"""
-                        <div class="irr-graphic-container">
-                            <div class="irr-header">
-                                <h1 class="irr-title">Recent IRR Find</h1>
-                                <p class="irr-subtitle">High-risk items needing immediate team accountability | {today_str}</p>
-                            </div>
-                        """
-
+<style>
+.irr-graphic-container {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: white;
+    color: black;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 900px;
+    margin: 20px auto;
+    border: 1px solid #e2e8f0;
+}
+.irr-header {
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+.irr-title {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0;
+    color: #1a202c;
+}
+.irr-subtitle {
+    font-size: 16px;
+    color: #718096;
+    margin: 5px 0 0 0;
+}
+.irr-row {
+    display: flex;
+    align-items: start;
+    gap: 25px;
+    padding: 20px 0;
+    border-bottom: 1px solid #edf2f7;
+}
+.irr-row:last-child {
+    border-bottom: none;
+}
+.irr-img-container {
+    width: 150px;
+    flex-shrink: 0;
+    text-align: center;
+}
+.irr-img-container img {
+    width: 150px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+}
+.irr-details {
+    flex-grow: 1;
+}
+.irr-tag-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.irr-tag {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 15px;
+    letter-spacing: 0.5px;
+}
+.irr-tag-red {
+    background-color: #fff5f5;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+.irr-tag-green {
+    background-color: #f0fff4;
+    color: #2f855a;
+    border: 1px solid #9ae6b4;
+}
+.irr-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 15px 0;
+    line-height: 1.3;
+}
+.irr-note-block {
+    background-color: #f7fafc;
+    border-left: 4px solid #cbd5e1;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+}
+.irr-note-label {
+    font-weight: 600;
+    color: #4a5568;
+    font-size: 14px;
+}
+.irr-note-text {
+    color: #1a202c;
+    font-size: 14px;
+    margin-top: 3px;
+}
+.irr-reason-block {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: #c53030;
+    font-weight: 600;
+    font-size: 14px;
+}
+.irr-actions {
+    width: 140px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 5px;
+}
+.irr-btn {
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    padding: 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    border: 1px solid #e2e8f0;
+}
+.irr-btn-white {
+    background-color: white;
+    color: #1a202c;
+}
+.irr-btn-blue {
+    background-color: #3182ce;
+    color: white;
+    border-color: #3182ce;
+}
+</style>
+<div class="irr-graphic-container">
+    <div class="irr-header">
+        <h1 class="irr-title">Recent IRR Find</h1>
+        <p class="irr-subtitle">High-risk items needing immediate team accountability | """ + today_str + """</p>
+    </div>
+"""
                         for _, row in latest_returns.iterrows():
-                            # Encode local images to base64 for embedding in HTML
                             img_path = get_sidebar_image(row['Product Name'])
                             if img_path:
                                 with open(img_path, "rb") as image_file:
                                     encoded_img = base64.b64encode(image_file.read()).decode()
                                 img_src = f"data:image/png;base64,{encoded_img}"
                             else:
-                                # Default empty image placeholder style
                                 img_src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjEwMCIgc3R5bGU9ImZpbGw6I2VkZjJmNztzdHJva2U6I2NiZDVlMTtzdHJva2Utd2lkdGg6MiIgLz48dGV4dCB4PSI3NSIgeT0iNTAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzcxODBlNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Tm8gSW1hZ2U8L3RleHQ+PC9zdmc+"
 
                             is_exception = str(row['Exception']).strip().upper() == 'TRUE'
                             exc_text = " (🛡️ EXCEPTION)" if is_exception else ""
 
+                            # HTML must be perfectly left-aligned here too!
                             html_code += f"""
-                            <div class="irr-row">
-                                <div class="irr-img-container">
-                                    <img src="{img_src}" alt="Product Photo">
-                                </div>
-                                <div class="irr-details">
-                                    <div class="irr-tag-container">
-                                        <div class="irr-tag irr-tag-red">SKU FOUND: {row['SKU']}</div>
-                                        <div class="irr-tag irr-tag-green">VERTICAL: {row['Vertical']}</div>
-                                    </div>
-                                    <h2 class="irr-name">{row['Product Name']}</h2>
-                                    
-                                    <div class="irr-note-block">
-                                        <div class="irr-note-label">trouble routing note added:</div>
-                                        <div class="irr-note-text">{row['Notes']}</div>
-                                    </div>
-                                    
-                                    <div class="irr-reason-block">
-                                        <span>🛑</span>
-                                        <span>{row['Return Reason']}{exc_text}</span>
-                                    </div>
-                                </div>
-                                <div class="irr-actions">
-                                    <div class="irr-btn irr-btn-white">🌐 StockX Live</div>
-                                    <div class="irr-btn irr-btn-blue">📘 Go to Sop link</div>
-                                    <div class="irr-btn irr-btn-white">📋 IRR Check Record</div>
-                                </div>
-                            </div>
-                            """
-
+    <div class="irr-row">
+        <div class="irr-img-container">
+            <img src="{img_src}" alt="Product Photo">
+        </div>
+        <div class="irr-details">
+            <div class="irr-tag-container">
+                <div class="irr-tag irr-tag-red">SKU FOUND: {row['SKU']}</div>
+                <div class="irr-tag irr-tag-green">VERTICAL: {row['Vertical']}</div>
+            </div>
+            <h2 class="irr-name">{row['Product Name']}</h2>
+            <div class="irr-note-block">
+                <div class="irr-note-label">trouble routing note added:</div>
+                <div class="irr-note-text">{row['Notes']}</div>
+            </div>
+            <div class="irr-reason-block">
+                <span>🛑</span>
+                <span>{row['Return Reason']}{exc_text}</span>
+            </div>
+        </div>
+        <div class="irr-actions">
+            <div class="irr-btn irr-btn-white">🌐 StockX Live</div>
+            <div class="irr-btn irr-btn-blue">📘 Go to Sop link</div>
+            <div class="irr-btn irr-btn-white">📋 IRR Check Record</div>
+        </div>
+    </div>
+"""
                         html_code += "</div>"
                         
                         # --- DISPLAY IN STREAMLIT ---
