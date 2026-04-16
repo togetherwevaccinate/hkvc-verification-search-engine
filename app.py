@@ -277,7 +277,7 @@ if not df.empty:
 # ----------------------------------------
 st.markdown("### Navigation")
 
-nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog", "📢 Recent SOP Updates"], horizontal=True, label_visibility="collapsed")
+nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog", "📢 Recent SOP Updates", "📚 Essential SOPs"], horizontal=True, label_visibility="collapsed")
 
 results = pd.DataFrame()
 search_query = ""
@@ -420,6 +420,61 @@ elif nav_mode == "📢 Recent SOP Updates":
                 st.info("⚠️ Could not read the date format. Please make sure dates in SOP_mapping.csv are standard formats like MM/DD/YYYY or YYYY-MM-DD.")
         else:
             st.info("No SOP updates found yet. Add dates to the 'Note Date' column in your SOP_mapping.csv file to see them here!")
+
+# --- UPDATED: Dynamic CSV Loading for Essential SOPs ---
+elif nav_mode == "📚 Essential SOPs":
+    st.markdown("---")
+    st.markdown("### 📚 Core Guidelines & Essential SOPs")
+    st.caption("Quick access to our most important warehouse standards, routing rules, and verification playbooks.")
+    st.write("")
+
+    try:
+        # App will attempt to read a file called essential_sops.csv
+        df_essential = pd.read_csv('essential_sops.csv')
+        
+        required_cols = ['Icon', 'Title', 'Description', 'Link']
+        missing_cols = [col for col in required_cols if col not in df_essential.columns]
+        
+        if missing_cols:
+            st.error(f"⚠️ Your essential_sops.csv is missing these columns: {', '.join(missing_cols)}")
+        elif df_essential.empty:
+            st.info("Your essential_sops.csv is empty. Add some rows to see them here!")
+        else:
+            cols = st.columns(2)
+            for i, row in df_essential.iterrows():
+                with cols[i % 2]:
+                    with st.container():
+                        icon = str(row['Icon']) if pd.notna(row['Icon']) else "📄"
+                        title = str(row['Title']) if pd.notna(row['Title']) else "Untitled SOP"
+                        desc = str(row['Description']) if pd.notna(row['Description']) else ""
+                        link = str(row['Link']) if pd.notna(row['Link']) else "#"
+                        
+                        st.markdown(f"#### {icon} {title}")
+                        if desc and desc.lower() != 'nan':
+                            st.write(desc)
+                        st.link_button("📘 Open Official Guideline", link, use_container_width=True)
+                        st.markdown("---")
+    except FileNotFoundError:
+        st.info("📂 **File Not Found: essential_sops.csv**")
+        st.write("To manage your SOP links without editing code, just create a file called **`essential_sops.csv`** and upload it to GitHub!")
+        st.write("It must contain exactly these 4 columns: `Icon`, `Title`, `Description`, `Link`")
+        
+        # Generates a perfect blank template for you to download
+        sample_data = pd.DataFrame([{
+            "Icon": "📦", 
+            "Title": "Inventory Condition Definitions (Box Damage)", 
+            "Description": "Official guidelines for what counts as a passable box vs. damaged (NDS/Defect).", 
+            "Link": "https://docs.google.com/document/d/1xMjPCc9f999MGY2wJoynYh1ZmRizoO6aZXGvVoJCLLE/edit?tab=t.0"
+        }])
+        
+        csv_template = sample_data.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Blank Template (essential_sops.csv)",
+            data=csv_template,
+            file_name="essential_sops.csv",
+            mime="text/csv",
+            type="primary"
+        )
 
 
 # ----------------------------------------
@@ -682,7 +737,6 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
                         today_str = datetime.datetime.now().strftime("%Y/%m/%d")
                         
                         html_code = ""
-                        # HTML and CSS completely flattened to the left wall to prevent Markdown Code Blocks
                         html_code += "<style>\n"
                         html_code += ".irr-graphic-container {\n"
                         html_code += "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\n"
