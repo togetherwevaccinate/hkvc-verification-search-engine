@@ -87,11 +87,9 @@ if not check_password():
 # 🔓 THE REST OF THE APP STARTS HERE 
 # ========================================
 
-# --- UPDATED: Dynamic Title & Time ---
 csv_file_path = '2026 IRR_Pass rate report - IRR.csv'
 try:
     file_timestamp = os.path.getmtime(csv_file_path)
-    # Formats to look like: April 16, 2026 02:45 PM
     update_date = datetime.datetime.fromtimestamp(file_timestamp).strftime("%B %d, %Y %I:%M %p")
 except FileNotFoundError:
     update_date = "Unknown Date"
@@ -279,7 +277,6 @@ if not df.empty:
 # ----------------------------------------
 st.markdown("### Navigation")
 
-# --- UPDATED: Smart Button Navigation ---
 if 'nav_mode' not in st.session_state:
     st.session_state['nav_mode'] = "🔍 Direct Search"
 
@@ -445,6 +442,7 @@ elif nav_mode == "📢 Recent SOP Updates":
         else:
             st.info("No SOP updates found yet. Add dates to the 'Note Date' column in your SOP_mapping.csv file to see them here!")
 
+# --- UPDATED: Essential SOPs Multiple Link Support ---
 elif nav_mode == "📚 Essential SOPs":
     st.markdown("---")
     st.markdown("### 📚 Core Guidelines & Essential SOPs")
@@ -452,7 +450,6 @@ elif nav_mode == "📚 Essential SOPs":
     st.write("")
 
     try:
-        # App will attempt to read a file called essential_sops.csv and force utf-8 encoding for emojis
         df_essential = pd.read_csv('essential_sops.csv', encoding='utf-8')
         
         required_cols = ['Icon', 'Title', 'Description', 'Link']
@@ -475,7 +472,17 @@ elif nav_mode == "📚 Essential SOPs":
                         st.markdown(f"#### {icon} {title}")
                         if desc and desc.lower() != 'nan':
                             st.write(desc)
-                        st.link_button("📘 Open Official Guideline", link, use_container_width=True)
+                        
+                        # --- NEW: Splitting multiple links by comma ---
+                        if link != "#":
+                            sop_links = [l.strip() for l in link.split(',')]
+                            for j, l in enumerate(sop_links):
+                                if l:
+                                    btn_name = "📘 Open Official Guideline" if len(sop_links) == 1 else f"📘 Open Official Guideline (Part {j+1})"
+                                    st.link_button(btn_name, l, use_container_width=True)
+                        else:
+                            st.link_button("📘 Open Official Guideline", "#", use_container_width=True)
+
                         st.markdown("---")
     except FileNotFoundError:
         st.info("📂 **File Not Found: essential_sops.csv**")
@@ -497,7 +504,6 @@ elif nav_mode == "📚 Essential SOPs":
             mime="text/csv",
             type="primary"
         )
-
 
 # ----------------------------------------
 # 4. DISPLAY RESULTS
