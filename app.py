@@ -87,14 +87,16 @@ if not check_password():
 # 🔓 THE REST OF THE APP STARTS HERE 
 # ========================================
 
+# --- UPDATED: Dynamic Title & Time ---
 csv_file_path = '2026 IRR_Pass rate report - IRR.csv'
 try:
     file_timestamp = os.path.getmtime(csv_file_path)
-    update_date = datetime.datetime.fromtimestamp(file_timestamp).strftime("%B %d, %Y")
+    # Formats to look like: April 16, 2026 02:45 PM
+    update_date = datetime.datetime.fromtimestamp(file_timestamp).strftime("%B %d, %Y %I:%M %p")
 except FileNotFoundError:
     update_date = "Unknown Date"
 
-st.title(f"👟 Hong Kong VC Verification Search Engine 1.0 ({update_date} Updated)")
+st.title(f"👟 Hong Kong VC Verification Information Hub (Beta) [{update_date}]")
 
 @st.cache_data
 def fetch_latest_data():
@@ -277,7 +279,29 @@ if not df.empty:
 # ----------------------------------------
 st.markdown("### Navigation")
 
-nav_mode = st.radio("Choose Navigation Mode:", ["🔍 Direct Search", "🛍️ Browse Catalog", "📢 Recent SOP Updates", "📚 Essential SOPs"], horizontal=True, label_visibility="collapsed")
+# --- UPDATED: Smart Button Navigation ---
+if 'nav_mode' not in st.session_state:
+    st.session_state['nav_mode'] = "🔍 Direct Search"
+
+nav_col1, nav_col2, nav_col3, nav_col4 = st.columns(4)
+
+if nav_col1.button("🔍 Direct Search", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "🔍 Direct Search" else "secondary"):
+    st.session_state['nav_mode'] = "🔍 Direct Search"
+    st.rerun()
+
+if nav_col2.button("🛍️ Browse Catalog", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "🛍️ Browse Catalog" else "secondary"):
+    st.session_state['nav_mode'] = "🛍️ Browse Catalog"
+    st.rerun()
+
+if nav_col3.button("📢 Recent SOP Updates", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "📢 Recent SOP Updates" else "secondary"):
+    st.session_state['nav_mode'] = "📢 Recent SOP Updates"
+    st.rerun()
+
+if nav_col4.button("📚 Essential SOPs", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "📚 Essential SOPs" else "secondary"):
+    st.session_state['nav_mode'] = "📚 Essential SOPs"
+    st.rerun()
+
+nav_mode = st.session_state['nav_mode']
 
 results = pd.DataFrame()
 search_query = ""
@@ -421,7 +445,6 @@ elif nav_mode == "📢 Recent SOP Updates":
         else:
             st.info("No SOP updates found yet. Add dates to the 'Note Date' column in your SOP_mapping.csv file to see them here!")
 
-# --- UPDATED: Dynamic CSV Loading for Essential SOPs ---
 elif nav_mode == "📚 Essential SOPs":
     st.markdown("---")
     st.markdown("### 📚 Core Guidelines & Essential SOPs")
@@ -429,8 +452,8 @@ elif nav_mode == "📚 Essential SOPs":
     st.write("")
 
     try:
-        # App will attempt to read a file called essential_sops.csv
-        df_essential = pd.read_csv('essential_sops.csv')
+        # App will attempt to read a file called essential_sops.csv and force utf-8 encoding for emojis
+        df_essential = pd.read_csv('essential_sops.csv', encoding='utf-8')
         
         required_cols = ['Icon', 'Title', 'Description', 'Link']
         missing_cols = [col for col in required_cols if col not in df_essential.columns]
@@ -459,7 +482,6 @@ elif nav_mode == "📚 Essential SOPs":
         st.write("To manage your SOP links without editing code, just create a file called **`essential_sops.csv`** and upload it to GitHub!")
         st.write("It must contain exactly these 4 columns: `Icon`, `Title`, `Description`, `Link`")
         
-        # Generates a perfect blank template for you to download
         sample_data = pd.DataFrame([{
             "Icon": "📦", 
             "Title": "Inventory Condition Definitions (Box Damage)", 
