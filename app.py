@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import datetime
 import plotly.express as px
@@ -442,7 +443,6 @@ elif nav_mode == "📢 Recent SOP Updates":
         else:
             st.info("No SOP updates found yet. Add dates to the 'Note Date' column in your SOP_mapping.csv file to see them here!")
 
-# --- UPDATED: Essential SOPs Multiple Link Support ---
 elif nav_mode == "📚 Essential SOPs":
     st.markdown("---")
     st.markdown("### 📚 Core Guidelines & Essential SOPs")
@@ -473,7 +473,6 @@ elif nav_mode == "📚 Essential SOPs":
                         if desc and desc.lower() != 'nan':
                             st.write(desc)
                         
-                        # --- NEW: Splitting multiple links by comma ---
                         if link != "#":
                             sop_links = [l.strip() for l in link.split(',')]
                             for j, l in enumerate(sop_links):
@@ -749,9 +748,10 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
                 
+        # --- UPDATED: Native Image Download inside HTML ---
         with admin_tab3:
             st.markdown("**Generate Slack Alert Graphic**")
-            st.caption("Click the button below to generate a formatted HTML table matching `IRR FIND.png`. **Use your OS screenshot tool (`Cmd+Shift+4` or Snipping Tool) to capture the result and paste it into Slack.**")
+            st.caption("Click the button below to generate the graphic. You can then download it as a PNG image with one click!")
 
             if st.button("🎨 Generate Recent Returns Graphic (Tabular Format)", use_container_width=True):
                 if not df.empty:
@@ -765,145 +765,6 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
                         today_str = datetime.datetime.now().strftime("%Y/%m/%d")
                         
                         html_code = ""
-                        html_code += "<style>\n"
-                        html_code += ".irr-graphic-container {\n"
-                        html_code += "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;\n"
-                        html_code += "background-color: white;\n"
-                        html_code += "color: black;\n"
-                        html_code += "padding: 30px;\n"
-                        html_code += "border-radius: 12px;\n"
-                        html_code += "max-width: 900px;\n"
-                        html_code += "margin: 20px auto;\n"
-                        html_code += "border: 1px solid #e2e8f0;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-header {\n"
-                        html_code += "border-bottom: 2px solid #e2e8f0;\n"
-                        html_code += "padding-bottom: 15px;\n"
-                        html_code += "margin-bottom: 25px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-title {\n"
-                        html_code += "font-size: 32px;\n"
-                        html_code += "font-weight: 800;\n"
-                        html_code += "margin: 0;\n"
-                        html_code += "color: #1a202c;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-subtitle {\n"
-                        html_code += "font-size: 16px;\n"
-                        html_code += "color: #718096;\n"
-                        html_code += "margin: 5px 0 0 0;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-row {\n"
-                        html_code += "display: flex;\n"
-                        html_code += "align-items: start;\n"
-                        html_code += "gap: 25px;\n"
-                        html_code += "padding: 20px 0;\n"
-                        html_code += "border-bottom: 1px solid #edf2f7;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-row:last-child {\n"
-                        html_code += "border-bottom: none;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-img-container {\n"
-                        html_code += "width: 150px;\n"
-                        html_code += "flex-shrink: 0;\n"
-                        html_code += "text-align: center;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-img-container img {\n"
-                        html_code += "width: 150px;\n"
-                        html_code += "height: auto;\n"
-                        html_code += "object-fit: contain;\n"
-                        html_code += "border-radius: 8px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-details {\n"
-                        html_code += "flex-grow: 1;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-tag-container {\n"
-                        html_code += "display: flex;\n"
-                        html_code += "gap: 10px;\n"
-                        html_code += "margin-bottom: 10px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-tag {\n"
-                        html_code += "font-size: 11px;\n"
-                        html_code += "font-weight: 700;\n"
-                        html_code += "text-transform: uppercase;\n"
-                        html_code += "padding: 4px 10px;\n"
-                        html_code += "border-radius: 15px;\n"
-                        html_code += "letter-spacing: 0.5px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-tag-red {\n"
-                        html_code += "background-color: #fff5f5;\n"
-                        html_code += "color: #c53030;\n"
-                        html_code += "border: 1px solid #feb2b2;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-tag-green {\n"
-                        html_code += "background-color: #f0fff4;\n"
-                        html_code += "color: #2f855a;\n"
-                        html_code += "border: 1px solid #9ae6b4;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-name {\n"
-                        html_code += "font-size: 18px;\n"
-                        html_code += "font-weight: 700;\n"
-                        html_code += "color: #1a202c;\n"
-                        html_code += "margin: 0 0 15px 0;\n"
-                        html_code += "line-height: 1.3;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-note-block {\n"
-                        html_code += "background-color: #f7fafc;\n"
-                        html_code += "border-left: 4px solid #cbd5e1;\n"
-                        html_code += "padding: 10px 15px;\n"
-                        html_code += "margin-bottom: 10px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-note-label {\n"
-                        html_code += "font-weight: 600;\n"
-                        html_code += "color: #4a5568;\n"
-                        html_code += "font-size: 14px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-note-text {\n"
-                        html_code += "color: #1a202c;\n"
-                        html_code += "font-size: 14px;\n"
-                        html_code += "margin-top: 3px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-reason-block {\n"
-                        html_code += "display: flex;\n"
-                        html_code += "gap: 8px;\n"
-                        html_code += "align-items: center;\n"
-                        html_code += "color: #c53030;\n"
-                        html_code += "font-weight: 600;\n"
-                        html_code += "font-size: 14px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-actions {\n"
-                        html_code += "width: 140px;\n"
-                        html_code += "flex-shrink: 0;\n"
-                        html_code += "display: flex;\n"
-                        html_code += "flex-direction: column;\n"
-                        html_code += "gap: 8px;\n"
-                        html_code += "padding-top: 5px;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-btn {\n"
-                        html_code += "font-size: 12px;\n"
-                        html_code += "font-weight: 600;\n"
-                        html_code += "text-align: center;\n"
-                        html_code += "padding: 8px;\n"
-                        html_code += "border-radius: 6px;\n"
-                        html_code += "text-decoration: none;\n"
-                        html_code += "border: 1px solid #e2e8f0;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-btn-white {\n"
-                        html_code += "background-color: white;\n"
-                        html_code += "color: #1a202c;\n"
-                        html_code += "}\n"
-                        html_code += ".irr-btn-blue {\n"
-                        html_code += "background-color: #3182ce;\n"
-                        html_code += "color: white;\n"
-                        html_code += "border-color: #3182ce;\n"
-                        html_code += "}\n"
-                        html_code += "</style>\n"
-                        
-                        html_code += "<div class=\"irr-graphic-container\">\n"
-                        html_code += "<div class=\"irr-header\">\n"
-                        html_code += "<h1 class=\"irr-title\">Recent IRR Find</h1>\n"
-                        html_code += f"<p class=\"irr-subtitle\">High-risk items needing immediate team accountability | {today_str}</p>\n"
-                        html_code += "</div>\n"
-
                         for _, row in latest_returns.iterrows():
                             img_path = get_sidebar_image(row['Product Name'])
                             if img_path:
@@ -916,42 +777,211 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
                             is_exception = str(row['Exception']).strip().upper() == 'TRUE'
                             exc_text = " (🛡️ EXCEPTION)" if is_exception else ""
 
-                            html_code += "<div class=\"irr-row\">\n"
-                            html_code += "<div class=\"irr-img-container\">\n"
-                            html_code += f"<img src=\"{img_src}\" alt=\"Product Photo\">\n"
-                            html_code += "</div>\n"
-                            html_code += "<div class=\"irr-details\">\n"
-                            html_code += "<div class=\"irr-tag-container\">\n"
-                            html_code += f"<div class=\"irr-tag irr-tag-red\">SKU FOUND: {row['SKU']}</div>\n"
-                            html_code += f"<div class=\"irr-tag irr-tag-green\">VERTICAL: {row['Vertical']}</div>\n"
-                            html_code += "</div>\n"
-                            html_code += f"<h2 class=\"irr-name\">{row['Product Name']}</h2>\n"
-                            html_code += "<div class=\"irr-note-block\">\n"
-                            html_code += "<div class=\"irr-note-label\">trouble routing note added:</div>\n"
-                            html_code += f"<div class=\"irr-note-text\">{row['Notes']}</div>\n"
-                            html_code += "</div>\n"
-                            html_code += "<div class=\"irr-reason-block\">\n"
-                            html_code += "<span>🛑</span>\n"
-                            html_code += f"<span>{row['Return Reason']}{exc_text}</span>\n"
-                            html_code += "</div>\n"
-                            html_code += "</div>\n"
-                            html_code += "<div class=\"irr-actions\">\n"
-                            html_code += "<div class=\"irr-btn irr-btn-white\">🌐 StockX Live</div>\n"
-                            html_code += "<div class=\"irr-btn irr-btn-blue\">📘 Go to Sop link</div>\n"
-                            html_code += "<div class=\"irr-btn irr-btn-white\">📋 IRR Check Record</div>\n"
-                            html_code += "</div>\n"
-                            html_code += "</div>\n"
+                            html_code += f"""
+                            <div class="irr-row">
+                                <div class="irr-img-container">
+                                    <img src="{img_src}" alt="Product Photo">
+                                </div>
+                                <div class="irr-details">
+                                    <div class="irr-tag-container">
+                                        <div class="irr-tag irr-tag-red">SKU FOUND: {row['SKU']}</div>
+                                        <div class="irr-tag irr-tag-green">VERTICAL: {row['Vertical']}</div>
+                                    </div>
+                                    <h2 class="irr-name">{row['Product Name']}</h2>
+                                    <div class="irr-note-block">
+                                        <div class="irr-note-label">trouble routing note added:</div>
+                                        <div class="irr-note-text">{row['Notes']}</div>
+                                    </div>
+                                    <div class="irr-reason-block">
+                                        <span>🛑</span>
+                                        <span>{row['Return Reason']}{exc_text}</span>
+                                    </div>
+                                </div>
+                                <div class="irr-actions">
+                                    <div class="irr-btn irr-btn-white">🌐 StockX Live</div>
+                                    <div class="irr-btn irr-btn-blue">📘 Go to Sop link</div>
+                                    <div class="irr-btn irr-btn-white">📋 IRR Check Record</div>
+                                </div>
+                            </div>
+                            """
 
-                        html_code += "</div>\n"
-                        
-                        # --- DISPLAY IN STREAMLIT ---
-                        st.markdown(html_code, unsafe_allow_html=True)
-                        st.markdown("---")
-                        
-                        # --- Instructions ---
-                        st.info("💡 **Admin Instruction:** Hover your mouse over the white graphic box above. Use your computer's screenshot tool (`Cmd+Shift+4` on Mac or Snipping Tool on Windows) to capture just the graphic, then paste it directly into Slack!")
+                        # --- COMPLETE HTML WRAPPER WITH HTML2CANVAS ---
+                        full_html = f"""
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+                            <style>
+                                body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }}
+                                .download-btn-container {{
+                                    max-width: 900px;
+                                    margin: 0 auto 20px auto;
+                                }}
+                                .download-btn {{
+                                    display: block;
+                                    width: 100%;
+                                    padding: 15px;
+                                    background-color: #ff4b4b;
+                                    color: white;
+                                    text-align: center;
+                                    font-size: 18px;
+                                    font-weight: bold;
+                                    border: none;
+                                    border-radius: 8px;
+                                    cursor: pointer;
+                                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                                    transition: background-color 0.3s;
+                                }}
+                                .download-btn:hover {{
+                                    background-color: #ff3333;
+                                }}
+                                .irr-graphic-container {{
+                                    background-color: white;
+                                    color: black;
+                                    padding: 30px;
+                                    border-radius: 12px;
+                                    max-width: 900px;
+                                    margin: 0 auto;
+                                    border: 1px solid #e2e8f0;
+                                }}
+                                .irr-header {{
+                                    border-bottom: 2px solid #e2e8f0;
+                                    padding-bottom: 15px;
+                                    margin-bottom: 25px;
+                                }}
+                                .irr-title {{
+                                    font-size: 32px;
+                                    font-weight: 800;
+                                    margin: 0;
+                                    color: #1a202c;
+                                }}
+                                .irr-subtitle {{
+                                    font-size: 16px;
+                                    color: #718096;
+                                    margin: 5px 0 0 0;
+                                }}
+                                .irr-row {{
+                                    display: flex;
+                                    align-items: start;
+                                    gap: 25px;
+                                    padding: 20px 0;
+                                    border-bottom: 1px solid #edf2f7;
+                                }}
+                                .irr-row:last-child {{
+                                    border-bottom: none;
+                                }}
+                                .irr-img-container {{
+                                    width: 150px;
+                                    flex-shrink: 0;
+                                    text-align: center;
+                                }}
+                                .irr-img-container img {{
+                                    width: 150px;
+                                    height: auto;
+                                    object-fit: contain;
+                                    border-radius: 8px;
+                                }}
+                                .irr-details {{
+                                    flex-grow: 1;
+                                }}
+                                .irr-tag-container {{
+                                    display: flex;
+                                    gap: 10px;
+                                    margin-bottom: 10px;
+                                }}
+                                .irr-tag {{
+                                    font-size: 11px;
+                                    font-weight: 700;
+                                    text-transform: uppercase;
+                                    padding: 4px 10px;
+                                    border-radius: 15px;
+                                    letter-spacing: 0.5px;
+                                }}
+                                .irr-tag-red {{ background-color: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }}
+                                .irr-tag-green {{ background-color: #f0fff4; color: #2f855a; border: 1px solid #9ae6b4; }}
+                                .irr-name {{
+                                    font-size: 18px;
+                                    font-weight: 700;
+                                    color: #1a202c;
+                                    margin: 0 0 15px 0;
+                                    line-height: 1.3;
+                                }}
+                                .irr-note-block {{
+                                    background-color: #f7fafc;
+                                    border-left: 4px solid #cbd5e1;
+                                    padding: 10px 15px;
+                                    margin-bottom: 10px;
+                                }}
+                                .irr-note-label {{ font-weight: 600; color: #4a5568; font-size: 14px; }}
+                                .irr-note-text {{ color: #1a202c; font-size: 14px; margin-top: 3px; }}
+                                .irr-reason-block {{
+                                    display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                    color: #c53030;
+                                    font-weight: 600;
+                                    font-size: 14px;
+                                }}
+                                .irr-actions {{
+                                    width: 140px;
+                                    flex-shrink: 0;
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 8px;
+                                    padding-top: 5px;
+                                }}
+                                .irr-btn {{
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    text-align: center;
+                                    padding: 8px;
+                                    border-radius: 6px;
+                                    text-decoration: none;
+                                    border: 1px solid #e2e8f0;
+                                }}
+                                .irr-btn-white {{ background-color: white; color: #1a202c; }}
+                                .irr-btn-blue {{ background-color: #3182ce; color: white; border-color: #3182ce; }}
+                            </style>
+                        </head>
+                        <body>
+                            <div class="download-btn-container">
+                                <button class="download-btn" onclick="takeScreenshot()">📸 Click Here to Download Picture to your Computer</button>
+                            </div>
+                            
+                            <div id="capture-area" class="irr-graphic-container">
+                                <div class="irr-header">
+                                    <h1 class="irr-title">Recent IRR Find</h1>
+                                    <p class="irr-subtitle">High-risk items needing immediate team accountability | {today_str}</p>
+                                </div>
+                                {html_code}
+                            </div>
 
-                        st.markdown("**Copy & Paste this message with your picture:**")
+                            <script>
+                            function takeScreenshot() {{
+                                // Tell html2canvas to take a picture of the div with ID 'capture-area'
+                                html2canvas(document.getElementById("capture-area"), {{
+                                    scale: 2, // High resolution
+                                    useCORS: true,
+                                    backgroundColor: "#ffffff"
+                                }}).then(canvas => {{
+                                    // Create a temporary link to download the image
+                                    let link = document.createElement('a');
+                                    link.download = 'Recent_Returns_Alert.png';
+                                    link.href = canvas.toDataURL("image/png");
+                                    link.click();
+                                }});
+                            }}
+                            </script>
+                        </body>
+                        </html>
+                        """
+                        
+                        # --- DISPLAY USING STREAMLIT COMPONENTS INSTEAD OF MARKDOWN ---
+                        st.info("💡 **Admin Instruction:** Click the big red button below to instantly download the generated graphic. You can then drop it straight into Slack!")
+                        
+                        components.html(full_html, height=900, scrolling=True)
+
+                        st.markdown("**Copy & Paste this message with your picture into Slack:**")
                         st.code("@here 🚨 Watch out team! New high-risk IRR items hitting our warehouse today. Please check these specific defects carefully. Full details in the Verification Search Engine!", language="text")
 
                     else:
