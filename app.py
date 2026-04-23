@@ -173,7 +173,6 @@ def fetch_latest_data():
     
     return df_combined
 
-# --- UPDATED: Fetching QC Data (Monthly Only) ---
 @st.cache_data
 def fetch_qc_data():
     try:
@@ -544,7 +543,6 @@ elif nav_mode == "📚 Essential SOPs":
             type="primary"
         )
 
-# --- UPDATED: QC Audit Dashboard (Monthly Only with Colors) ---
 elif nav_mode == "🔎 QC Audit Dashboard":
     st.markdown("---")
     st.markdown("### 📈 Monthly QC Trends")
@@ -553,15 +551,20 @@ elif nav_mode == "🔎 QC Audit Dashboard":
     if not df_qc_monthly.empty:
         chart_data = df_qc_monthly.copy()
         
-        # Remove the header rows from the bar chart calculations
-        header_rows = ['major miss', 'moderate miss', 'minor miss']
-        chart_data = chart_data[~chart_data['Miss Reason'].str.lower().str.strip().isin(header_rows)]
+        # --- NEW: Removing extra summary rows from the Bar Chart ---
+        exclude_from_chart = [
+            'major miss', 'moderate miss', 'minor miss', 
+            'total qty of eol audit', 'verification team', 
+            'inventory team', 'vqa team', 'total', 
+            'fail %', 'pass rate %', 'total fail %'
+        ]
+        
+        chart_data = chart_data[~chart_data['Miss Reason'].str.lower().str.strip().isin(exclude_from_chart)]
         
         chart_data['Total'] = pd.to_numeric(chart_data['Total'], errors='coerce').fillna(0)
         chart_data = chart_data[chart_data['Total'] > 0]
         
         if not chart_data.empty:
-            # Custom Color mapping based on Severity!
             color_discrete_map = {
                 'Major Miss': '#8b0000',      # Dark Red
                 'Moderate Miss': '#ff4b4b',   # Bright Red
@@ -585,20 +588,31 @@ elif nav_mode == "🔎 QC Audit Dashboard":
         
         st.markdown("#### Full Monthly Data Table")
         
-        # Style the dataframe to highlight the Major/Moderate/Minor rows
+        # --- UPDATED: Color code the new Summary Rows at the bottom ---
         def style_qc_table(row):
             reason = str(row.get('Miss Reason', '')).strip().lower()
+            
+            # Severity Colors
             if reason == 'major miss':
                 return ['background-color: #8b0000; color: white; font-weight: bold'] * len(row)
             elif reason == 'moderate miss':
                 return ['background-color: #ff4b4b; color: white; font-weight: bold'] * len(row)
             elif reason == 'minor miss':
                 return ['background-color: #ffcccc; color: black; font-weight: bold'] * len(row)
+            
+            # Audit Totals (Light Blue)
+            elif reason in ['total qty of eol audit', 'verification team', 'inventory team', 'vqa team', 'total']:
+                return ['background-color: #e0f7fa; color: black; font-weight: bold'] * len(row)
+                
+            # KPI Colors
+            elif reason == 'fail %':
+                return ['background-color: #ffcc80; color: black; font-weight: bold'] * len(row) # Orange/Warning
+            elif reason == 'pass rate %':
+                return ['background-color: #c8e6c9; color: black; font-weight: bold'] * len(row) # Green/Success
+                
             return [''] * len(row)
         
-        # Hide the extra "Severity" column since we colorized it
         display_df = df_qc_monthly.drop(columns=['Severity'], errors='ignore')
-        
         st.dataframe(display_df.style.apply(style_qc_table, axis=1), use_container_width=True, hide_index=True)
         
     else:
@@ -849,7 +863,6 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
                 
-        # --- REVERTED BACK TO SECURE HTML (NO JS DOWNLOADER) ---
         with admin_tab3:
             st.markdown("**Generate Slack Alert Graphic**")
             st.caption("Click the button below to generate a formatted HTML table matching `IRR FIND.png`. **Use your OS screenshot tool (`Cmd+Shift+4` on Mac or Snipping Tool on Windows) to capture the result and paste it into Slack.**")
