@@ -174,7 +174,27 @@ def fetch_latest_data():
     
     return df_combined
 
+# --- NEW: Fetching QC Audit Data ---
+@st.cache_data
+def fetch_qc_data():
+    try:
+        df_daily = pd.read_csv('HKVC QC Audit Tracker (2026 Q1-Q2) - Daily Audit Record (Q1-Q2).csv')
+        df_daily.fillna('', inplace=True)
+        # Drop columns that are completely empty/unnamed if they exist
+        df_daily = df_daily.loc[:, ~df_daily.columns.str.contains('^Unnamed')]
+    except Exception:
+        df_daily = pd.DataFrame()
+
+    try:
+        df_monthly = pd.read_csv('HKVC QC Audit Tracker (2026 Q1-Q2) - Monthly Chart (VC).csv', skiprows=1)
+        df_monthly.rename(columns={'2026': 'Miss Reason'}, inplace=True)
+    except Exception:
+        df_monthly = pd.DataFrame()
+        
+    return df_daily, df_monthly
+
 df = fetch_latest_data()
+df_qc_daily, df_qc_monthly = fetch_qc_data()
 
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
@@ -218,7 +238,6 @@ if not df.empty:
                     is_exception = (exception_status == 'TRUE')
                     exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                     
-                    # --- UPDATED: Encore Internal Order Link ---
                     encore_url = f"https://encore.stockx.io/orders/{row['Order Number']}"
                     
                     compact_text = (
@@ -252,7 +271,6 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
-                    # --- UPDATED: Encore link (gets most recent order number for this item) ---
                     item_order = df[(df['Product Name'] == item) & (df['Record Source'] == 'IRR (Returned)')]['Order Number'].iloc[0]
                     encore_url = f"https://encore.stockx.io/orders/{item_order}"
                     
@@ -273,7 +291,6 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
-                    # --- UPDATED: Encore link (gets most recent order number for this item) ---
                     item_order = df[(df['Product Name'] == item) & (df['Record Source'] == 'Pass Order')]['Order Number'].iloc[0]
                     encore_url = f"https://encore.stockx.io/orders/{item_order}"
                     
@@ -293,7 +310,8 @@ st.markdown("### Navigation")
 if 'nav_mode' not in st.session_state:
     st.session_state['nav_mode'] = "🔍 Direct Search"
 
-nav_col1, nav_col2, nav_col3, nav_col4 = st.columns(4)
+# --- UPDATED: 5 Navigation Columns ---
+nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
 
 if nav_col1.button("🔍 Direct Search", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "🔍 Direct Search" else "secondary"):
     st.session_state['nav_mode'] = "🔍 Direct Search"
@@ -309,6 +327,10 @@ if nav_col3.button("📢 Recent SOP Updates", use_container_width=True, type="pr
 
 if nav_col4.button("📚 Essential SOPs", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "📚 Essential SOPs" else "secondary"):
     st.session_state['nav_mode'] = "📚 Essential SOPs"
+    st.rerun()
+
+if nav_col5.button("🔎 QC Audit Dashboard", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "🔎 QC Audit Dashboard" else "secondary"):
+    st.session_state['nav_mode'] = "🔎 QC Audit Dashboard"
     st.rerun()
 
 nav_mode = st.session_state['nav_mode']
@@ -516,10 +538,83 @@ elif nav_mode == "📚 Essential SOPs":
             type="primary"
         )
 
+# --- NEW: QC Audit Dashboard Navigation Tab ---
+elif nav_mode == "🔎 QC Audit Dashboard":
+    st.markdown("---")
+    st.markdown("### 🔎 QC Audit Dashboard")
+    st.caption("Review daily End-of-Line (EOL) QC audit records and analyze monthly verification performance metrics.")
+    st.write("")
+
+    qc_tab1, qc_tab2 = st.tabs(["📝 Daily QC Records", "📈 Monthly QC Trends"])
+
+    with qc_tab1:
+        if not df_qc_daily.empty:
+            st.markdown("#### Search Daily Audit Records")
+            col_qc_search, _ = st.columns([1, 1])
+            with col_qc_search:
+                qc_search = st.text_input("🔍 Search by Verifier Name or Order Number:", key="qc_search_bar")
+            
+            display_qc = df_qc_daily.copy()
+            if qc_search:
+                query = qc_search.lower()
+                display_qc = display_qc[
+                    display_qc['Name'].str.lower().str.contains(query, na=False) |
+                    display_qc['Order number'].str.lower().str.contains(query, na=False)
+                ]
+            
+            # Color code the rows (Green for pass, Red for fails/misses)
+            def qc_colors(row):
+                status = str(row.get('Pass / Failed reason', '')).strip().lower()
+                if status == 'pass': 
+                    return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
+                elif status != '' and status != '-': 
+                    return ['background-color: rgba(248, 81, 73, 0.15)'] * len(row)
+                return [''] * len(row)
+            
+            st.dataframe(display_qc.style.apply(qc_colors, axis=1), use_container_width=True, hide_index=True)
+            
+        else:
+            st.info("📂 **No daily QC data found.** Please ensure the file `HKVC QC Audit Tracker (2026 Q1-Q2) - Daily Audit Record (Q1-Q2).csv` is uploaded to your GitHub repository.")
+
+    with qc_tab2:
+        if not df_qc_monthly.empty:
+            st.markdown("#### Total Verification Misses (YTD)")
+            st.caption("Aggregated count of specific miss reasons identified during EOL Audits.")
+            
+            chart_data = df_qc_monthly.copy()
+            
+            # Clean data for charting (Remove 0 totals and remove the summary "Major miss" header row)
+            if 'Total' in chart_data.columns and 'Miss Reason' in chart_data.columns:
+                chart_data['Total'] = pd.to_numeric(chart_data['Total'], errors='coerce').fillna(0)
+                chart_data = chart_data[chart_data['Total'] > 0]
+                chart_data = chart_data[chart_data['Miss Reason'].str.lower() != 'major miss']
+                
+                if not chart_data.empty:
+                    fig = px.bar(
+                        chart_data, 
+                        x='Total', 
+                        y='Miss Reason', 
+                        orientation='h', 
+                        color='Total', 
+                        color_continuous_scale='Reds',
+                        text='Total'
+                    )
+                    fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=10, r=10, t=30, b=10))
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.success("No misses recorded in the dataset!")
+            
+            st.markdown("#### Full Monthly Data Table")
+            st.dataframe(df_qc_monthly, use_container_width=True, hide_index=True)
+            
+        else:
+            st.info("📂 **No monthly QC data found.** Please ensure the file `HKVC QC Audit Tracker (2026 Q1-Q2) - Monthly Chart (VC).csv` is uploaded to your GitHub repository.")
+
+
 # ----------------------------------------
 # 4. DISPLAY RESULTS
 # ----------------------------------------
-if not results.empty:
+if not results.empty and nav_mode in ["🔍 Direct Search", "🛍️ Browse Catalog"]:
     
     if 'SOP Link' not in results.columns: results['SOP Link'] = 'None'
     if 'Description' not in results.columns: results['Description'] = 'None'
