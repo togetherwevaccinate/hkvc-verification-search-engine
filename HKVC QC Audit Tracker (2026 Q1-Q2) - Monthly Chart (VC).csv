@@ -1,0 +1,45 @@
+,,,,,,,,,,,,,,,,,,,,,,,,,,
+2026,Jan,Fail %,Feb,Fail %,Mar,Fail %,Apr,Fail %,May,Fail %,Jun,Fail %,Jul,Fail %,Aug,Fail %,Sep,Fail %,Oct,Fail %,Nov,Fail %,Dec,Fail %,Total,Total Fail %
+Major miss,4,,1,,1,,2,,0,,0,,0,,0,,0,,0,,0,,0,0,8,0.10%
+Defect on the item,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Didn't take out unnecessary item,1,0.03%,1,0.06%,1,0.05%,1,0.07%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,4,0.05%
+Didn't payout,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Foreign odor,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Inauthentic,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Missing commercial invoice,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Missing required accessories,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Order number on shipping label doesn't match with the invoice,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Package/ Shipping box sorted incorrectly,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Shipping box issue,1,0.03%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,1,0.01%
+Signs of wear,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Style code on the box doesn't match what's on Encore and buyer invoice,1,0.03%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,1,0.01%
+Style code/size on the item doesn't match what's on Encore (SN/SW),1,0.03%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,1,0.01%
+Style code/size on the size tag doesn't match what's on the box,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Tagging issue,0,0.00%,0,0.00%,0,0.00%,1,0.07%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,1,0.01%
+Moderate miss,0,,0,,0,,0,,0,,0,,0,,0,,0,,0,,0,,0,,0,0.00%
+Invoice inside polybag,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Sealed not properly and neatly,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Shoelaces are not presented as deadstock condition,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Tape issue,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+The paper/wrapping isn't presentable and in brand-new/dead-stock condition,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Minor miss,1,,1,,1,,3,,0,,0,,0,,0,,0,,0,,0,,0,,6,0.07%
+Dunnage issue,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Invoice issue,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Shipping label issue,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+StockX tag/sticker defect,1,0.03%,0,0.00%,1,0.05%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,2,0.02%
+StockX ID not in an acceptable place,0,0.00%,1,0.06%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,1,0.01%
+Wrong packing method,0,0.00%,0,0.00%,0,0.00%,0,0.00%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,0.00%
+Advertisement issue,0,0.00%,0,0.00%,0,0.00%,3,0.22%,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,0,#DIV/0!,3,
+Total qty of EOL audit ,3027,,1540,,2141,,1358,,0,,0,,0,,0,,0,,0,,0,,0,,8066,
+Ver. Team,2995,,1509,,2085,,1292,,0,,0,,,,,,,,,,,,,,,
+Team Captain,1,,13,,2,,5,,0,,0,,,,,,,,,,,,,,,
+AKM,0,,0,,0,,0,,0,,0,,,,,,,,,,,,,,,
+VQA Team,30,,15,,36,,39,,0,,0,,,,,,,,,,,,,,,
+Team Lead,0,,0,,0,,0,,0,,0,,,,,,,,,,,,,,,
+Unknown,1,,3,,18,,22,,0,,0,,,,,,,,,,,,,,,
+OPS Team,0,,1,,1,,0,,0,,0,,,,,,,,,,,,,,,
+Supply Chain,0,,0,,1,,0,,0,,0,,,,,,,,,,,,,,,
+QA Team,2,,0,,3,,0,,0,,0,,,,,,,,,,,,,,,
+Total fail,5,,2,,2,,5,,0,,0,,0,,0,,0,,0,,0,,0,,14,
+Fail %,0.17%,,0.13%,,0.09%,,0.37%,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,0.17%,
+Pass rate %,99.83%,,99.87%,,99.91%,,99.63%,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,#DIV/0!,,99.83%,
