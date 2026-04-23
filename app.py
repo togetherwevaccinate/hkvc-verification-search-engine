@@ -218,11 +218,12 @@ if not df.empty:
                     is_exception = (exception_status == 'TRUE')
                     exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                     
-                    stockx_url = f"https://stockx.com/{str(row['Product Name']).lower()}"
+                    # --- UPDATED: Encore Internal Order Link ---
+                    encore_url = f"https://encore.stockx.io/orders/{row['Order Number']}"
                     
                     compact_text = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
-                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'><b>{row['Product Name']}</b></a><br>"
+                        f"<a href='{encore_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'><b>{row['Product Name']}</b></a><br>"
                         f"<span style='color: gray;'>SKU: {row['SKU']}</span><br>"
                         f"{exception_badge}"
                         f"<span style='color: #ffb86c;'>🛑 {row['Return Reason']} ({row['Category']})</span>"
@@ -251,12 +252,14 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
-                    # --- UPDATED: Top Returns now have embedded StockX URL ---
-                    stockx_url = f"https://stockx.com/{str(item).lower()}"
+                    # --- UPDATED: Encore link (gets most recent order number for this item) ---
+                    item_order = df[(df['Product Name'] == item) & (df['Record Source'] == 'IRR (Returned)')]['Order Number'].iloc[0]
+                    encore_url = f"https://encore.stockx.io/orders/{item_order}"
+                    
                     compact_ret = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
                         f"<b>{count} Returns:</b><br>"
-                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
+                        f"<a href='{encore_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
                         f"</div>"
                     )
                     st.markdown(compact_ret, unsafe_allow_html=True)
@@ -270,12 +273,14 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
-                    # --- UPDATED: Top Passes now have embedded StockX URL ---
-                    stockx_url = f"https://stockx.com/{str(item).lower()}"
+                    # --- UPDATED: Encore link (gets most recent order number for this item) ---
+                    item_order = df[(df['Product Name'] == item) & (df['Record Source'] == 'Pass Order')]['Order Number'].iloc[0]
+                    encore_url = f"https://encore.stockx.io/orders/{item_order}"
+                    
                     compact_pass = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
                         f"<b>{count} Passes:</b><br>"
-                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
+                        f"<a href='{encore_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
                         f"</div>"
                     )
                     st.markdown(compact_pass, unsafe_allow_html=True)
