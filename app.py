@@ -218,7 +218,6 @@ if not df.empty:
                     is_exception = (exception_status == 'TRUE')
                     exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                     
-                    # --- UPDATED: Clickable StockX Link and Category/Reason Output ---
                     stockx_url = f"https://stockx.com/{str(row['Product Name']).lower()}"
                     
                     compact_text = (
@@ -252,9 +251,12 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
+                    # --- UPDATED: Top Returns now have embedded StockX URL ---
+                    stockx_url = f"https://stockx.com/{str(item).lower()}"
                     compact_ret = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
-                        f"<b>{count} Returns:</b><br>{item}"
+                        f"<b>{count} Returns:</b><br>"
+                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
                         f"</div>"
                     )
                     st.markdown(compact_ret, unsafe_allow_html=True)
@@ -268,9 +270,12 @@ if not df.empty:
                     img = get_sidebar_image(item)
                     if img: st.image(img, use_container_width=True)
                 with col2:
+                    # --- UPDATED: Top Passes now have embedded StockX URL ---
+                    stockx_url = f"https://stockx.com/{str(item).lower()}"
                     compact_pass = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 10px;'>"
-                        f"<b>{count} Passes:</b><br>{item}"
+                        f"<b>{count} Passes:</b><br>"
+                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'>{item}</a>"
                         f"</div>"
                     )
                     st.markdown(compact_pass, unsafe_allow_html=True)
