@@ -3,6 +3,7 @@ import streamlit as st
 import os
 import datetime
 import plotly.express as px
+import plotly.graph_objects as go
 import time
 import urllib.parse
 import requests
@@ -217,12 +218,15 @@ if not df.empty:
                     is_exception = (exception_status == 'TRUE')
                     exception_badge = "<span style='color: #ff4b4b;'>🛡️ <b>Exception: No Accountability</b></span><br>" if is_exception else ""
                     
+                    # --- UPDATED: Clickable StockX Link and Category/Reason Output ---
+                    stockx_url = f"https://stockx.com/{str(row['Product Name']).lower()}"
+                    
                     compact_text = (
                         f"<div style='font-size: 13px; line-height: 1.3; margin-bottom: 15px;'>"
-                        f"<b>{row['Product Name']}</b><br>"
+                        f"<a href='{stockx_url}' target='_blank' style='color: #64b5f6; text-decoration: none;'><b>{row['Product Name']}</b></a><br>"
                         f"<span style='color: gray;'>SKU: {row['SKU']}</span><br>"
                         f"{exception_badge}"
-                        f"<span style='color: #64b5f6;'>💬 {row['Notes']}</span>"
+                        f"<span style='color: #ffb86c;'>🛑 {row['Return Reason']} ({row['Category']})</span>"
                         f"</div>"
                     )
                     st.markdown(compact_text, unsafe_allow_html=True)
@@ -746,7 +750,6 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
                 
-        # --- REVERTED BACK TO SECURE HTML (NO JS DOWNLOADER) ---
         with admin_tab3:
             st.markdown("**Generate Slack Alert Graphic**")
             st.caption("Click the button below to generate a formatted HTML table matching `IRR FIND.png`. **Use your OS screenshot tool (`Cmd+Shift+4` on Mac or Snipping Tool on Windows) to capture the result and paste it into Slack.**")
