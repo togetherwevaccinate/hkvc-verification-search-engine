@@ -3,7 +3,6 @@ import streamlit as st
 import os
 import datetime
 import plotly.express as px
-import plotly.graph_objects as go
 import time
 import urllib.parse
 import requests
@@ -174,27 +173,35 @@ def fetch_latest_data():
     
     return df_combined
 
-# --- NEW: Fetching QC Audit Data ---
+# --- UPDATED: Fetching QC Data (Monthly Only) ---
 @st.cache_data
 def fetch_qc_data():
     try:
-        df_daily = pd.read_csv('HKVC QC Audit Tracker (2026 Q1-Q2) - Daily Audit Record (Q1-Q2).csv')
-        df_daily.fillna('', inplace=True)
-        # Drop columns that are completely empty/unnamed if they exist
-        df_daily = df_daily.loc[:, ~df_daily.columns.str.contains('^Unnamed')]
-    except Exception:
-        df_daily = pd.DataFrame()
-
-    try:
         df_monthly = pd.read_csv('HKVC QC Audit Tracker (2026 Q1-Q2) - Monthly Chart (VC).csv', skiprows=1)
         df_monthly.rename(columns={'2026': 'Miss Reason'}, inplace=True)
+        
+        # Determine Severity based on the section headers in the CSV
+        severity = "Uncategorized"
+        severities = []
+        for reason in df_monthly['Miss Reason']:
+            r_lower = str(reason).strip().lower()
+            if r_lower in ['major miss', 'moderate miss', 'minor miss']:
+                severity = r_lower.title()
+            severities.append(severity)
+        
+        df_monthly['Severity'] = severities
+        
+        # Clean up #DIV/0! and NaN errors from Excel
+        df_monthly = df_monthly.replace(['#DIV/0!', 'None', 'nan'], '-')
+        df_monthly.fillna('-', inplace=True)
+        
     except Exception:
         df_monthly = pd.DataFrame()
         
-    return df_daily, df_monthly
+    return df_monthly
 
 df = fetch_latest_data()
-df_qc_daily, df_qc_monthly = fetch_qc_data()
+df_qc_monthly = fetch_qc_data()
 
 def reset_to_home():
     st.session_state['text_search_bar'] = ""
@@ -310,7 +317,6 @@ st.markdown("### Navigation")
 if 'nav_mode' not in st.session_state:
     st.session_state['nav_mode'] = "🔍 Direct Search"
 
-# --- UPDATED: 5 Navigation Columns ---
 nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
 
 if nav_col1.button("🔍 Direct Search", use_container_width=True, type="primary" if st.session_state['nav_mode'] == "🔍 Direct Search" else "secondary"):
@@ -538,77 +544,65 @@ elif nav_mode == "📚 Essential SOPs":
             type="primary"
         )
 
-# --- NEW: QC Audit Dashboard Navigation Tab ---
+# --- UPDATED: QC Audit Dashboard (Monthly Only with Colors) ---
 elif nav_mode == "🔎 QC Audit Dashboard":
     st.markdown("---")
-    st.markdown("### 🔎 QC Audit Dashboard")
-    st.caption("Review daily End-of-Line (EOL) QC audit records and analyze monthly verification performance metrics.")
-    st.write("")
-
-    qc_tab1, qc_tab2 = st.tabs(["📝 Daily QC Records", "📈 Monthly QC Trends"])
-
-    with qc_tab1:
-        if not df_qc_daily.empty:
-            st.markdown("#### Search Daily Audit Records")
-            col_qc_search, _ = st.columns([1, 1])
-            with col_qc_search:
-                qc_search = st.text_input("🔍 Search by Verifier Name or Order Number:", key="qc_search_bar")
+    st.markdown("### 📈 Monthly QC Trends")
+    st.caption("Aggregated count of specific miss reasons identified during EOL Audits.")
+    
+    if not df_qc_monthly.empty:
+        chart_data = df_qc_monthly.copy()
+        
+        # Remove the header rows from the bar chart calculations
+        header_rows = ['major miss', 'moderate miss', 'minor miss']
+        chart_data = chart_data[~chart_data['Miss Reason'].str.lower().str.strip().isin(header_rows)]
+        
+        chart_data['Total'] = pd.to_numeric(chart_data['Total'], errors='coerce').fillna(0)
+        chart_data = chart_data[chart_data['Total'] > 0]
+        
+        if not chart_data.empty:
+            # Custom Color mapping based on Severity!
+            color_discrete_map = {
+                'Major Miss': '#8b0000',      # Dark Red
+                'Moderate Miss': '#ff4b4b',   # Bright Red
+                'Minor Miss': '#ffcccc',      # Light Pink
+                'Uncategorized': 'gray'
+            }
             
-            display_qc = df_qc_daily.copy()
-            if qc_search:
-                query = qc_search.lower()
-                display_qc = display_qc[
-                    display_qc['Name'].str.lower().str.contains(query, na=False) |
-                    display_qc['Order number'].str.lower().str.contains(query, na=False)
-                ]
-            
-            # Color code the rows (Green for pass, Red for fails/misses)
-            def qc_colors(row):
-                status = str(row.get('Pass / Failed reason', '')).strip().lower()
-                if status == 'pass': 
-                    return ['background-color: rgba(46, 160, 67, 0.15)'] * len(row)
-                elif status != '' and status != '-': 
-                    return ['background-color: rgba(248, 81, 73, 0.15)'] * len(row)
-                return [''] * len(row)
-            
-            st.dataframe(display_qc.style.apply(qc_colors, axis=1), use_container_width=True, hide_index=True)
-            
+            fig = px.bar(
+                chart_data, 
+                x='Total', 
+                y='Miss Reason', 
+                orientation='h', 
+                color='Severity', 
+                color_discrete_map=color_discrete_map,
+                text='Total'
+            )
+            fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("📂 **No daily QC data found.** Please ensure the file `HKVC QC Audit Tracker (2026 Q1-Q2) - Daily Audit Record (Q1-Q2).csv` is uploaded to your GitHub repository.")
-
-    with qc_tab2:
-        if not df_qc_monthly.empty:
-            st.markdown("#### Total Verification Misses (YTD)")
-            st.caption("Aggregated count of specific miss reasons identified during EOL Audits.")
-            
-            chart_data = df_qc_monthly.copy()
-            
-            # Clean data for charting (Remove 0 totals and remove the summary "Major miss" header row)
-            if 'Total' in chart_data.columns and 'Miss Reason' in chart_data.columns:
-                chart_data['Total'] = pd.to_numeric(chart_data['Total'], errors='coerce').fillna(0)
-                chart_data = chart_data[chart_data['Total'] > 0]
-                chart_data = chart_data[chart_data['Miss Reason'].str.lower() != 'major miss']
-                
-                if not chart_data.empty:
-                    fig = px.bar(
-                        chart_data, 
-                        x='Total', 
-                        y='Miss Reason', 
-                        orientation='h', 
-                        color='Total', 
-                        color_continuous_scale='Reds',
-                        text='Total'
-                    )
-                    fig.update_layout(yaxis={'categoryorder':'total ascending'}, margin=dict(l=10, r=10, t=30, b=10))
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.success("No misses recorded in the dataset!")
-            
-            st.markdown("#### Full Monthly Data Table")
-            st.dataframe(df_qc_monthly, use_container_width=True, hide_index=True)
-            
-        else:
-            st.info("📂 **No monthly QC data found.** Please ensure the file `HKVC QC Audit Tracker (2026 Q1-Q2) - Monthly Chart (VC).csv` is uploaded to your GitHub repository.")
+            st.success("No misses recorded in the dataset!")
+        
+        st.markdown("#### Full Monthly Data Table")
+        
+        # Style the dataframe to highlight the Major/Moderate/Minor rows
+        def style_qc_table(row):
+            reason = str(row.get('Miss Reason', '')).strip().lower()
+            if reason == 'major miss':
+                return ['background-color: #8b0000; color: white; font-weight: bold'] * len(row)
+            elif reason == 'moderate miss':
+                return ['background-color: #ff4b4b; color: white; font-weight: bold'] * len(row)
+            elif reason == 'minor miss':
+                return ['background-color: #ffcccc; color: black; font-weight: bold'] * len(row)
+            return [''] * len(row)
+        
+        # Hide the extra "Severity" column since we colorized it
+        display_df = df_qc_monthly.drop(columns=['Severity'], errors='ignore')
+        
+        st.dataframe(display_df.style.apply(style_qc_table, axis=1), use_container_width=True, hide_index=True)
+        
+    else:
+        st.info("📂 **No monthly QC data found.** Please ensure the file `HKVC QC Audit Tracker (2026 Q1-Q2) - Monthly Chart (VC).csv` is uploaded to your GitHub repository.")
 
 
 # ----------------------------------------
@@ -855,6 +849,7 @@ with st.expander("🛠️ Admin: View Search Logs & Analytics"):
             else:
                 st.info("No missed searches logged yet!")
                 
+        # --- REVERTED BACK TO SECURE HTML (NO JS DOWNLOADER) ---
         with admin_tab3:
             st.markdown("**Generate Slack Alert Graphic**")
             st.caption("Click the button below to generate a formatted HTML table matching `IRR FIND.png`. **Use your OS screenshot tool (`Cmd+Shift+4` on Mac or Snipping Tool on Windows) to capture the result and paste it into Slack.**")
